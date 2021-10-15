@@ -1,4 +1,6 @@
-using InvertedIndex, SimilaritySearch, LinearAlgebra
+# This file is part of InvertedFiles.jl
+
+using InvertedFiles, SimilaritySearch, LinearAlgebra
 using Test
 using Random
 Random.seed!(0)
@@ -43,4 +45,30 @@ Random.seed!(0)
         @test abs(evaluate(cdist, aL[i], aL[i+1]) - evaluate(cdist, AL[i], AL[i+1])) < 1e-3
     end
 
+end
+
+@testset "InvertedFile" begin
+    A = [normalize!(rand(300)) for i in 1:1000]
+    B = [SVEC(enumerate(a)) for a in A]
+
+    I = InvertedFile()
+    append!(I, B)
+    #@info I
+    #@info vectors(I)
+
+    k = 30
+    for i in 1:10
+        qid = rand(1:length(A))
+        Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        Bres = search(I, B[qid], KnnResult(k))
+        @test scores(Ares, Bres).recall == 1.0
+    end
+
+    k = 30
+    for i in 1:10
+        qid = rand(1:length(A))
+        Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        Bres = search(I, B[qid], KnnResult(k))
+        @test scores(Ares, Bres).recall == 1.0
+    end
 end

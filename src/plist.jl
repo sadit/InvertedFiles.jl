@@ -1,4 +1,4 @@
-# This file is a part of InvertedIndex.jl
+# This file is a part of InvertedFiles.jl
 
 using SimilaritySearch
 export PostingList
@@ -6,6 +6,9 @@ export PostingList
 struct PostingList{IType,WType}
     I::Vector{IType}
     W::Vector{WType}
+
+    PostingList{IType,WType}() where {IType,WType} = new{IType,WType}(IType[], WType[])
+    PostingList(I::Vector{IType}, W::Vector{WType}) where {IType,WType} = new{IType,WType}(I, W)
 end
 
 Base.length(plist::PostingList) = length(plist.I)
@@ -16,8 +19,6 @@ function Base.setindex!(plist::PostingList, pair, index)
     plist.I[index] = first(pair)
     plist.W[index] = last(pair)
 end
-
-PostingList() = PostingList{Int32,Float32}(Int32[], Float32[])
 
 function topk(plist::PostingList{I,F}) where {I,F}
     T = KnnResult{I,F}(top)

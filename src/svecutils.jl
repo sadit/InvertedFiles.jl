@@ -1,4 +1,5 @@
-# This file is a part of InvertedIndex.jl
+# This file is part of InvertedFiles.jl
+
 export dvec
 import SparseArrays: sparsevec, sparse
 

@@ -1,38 +1,44 @@
-# This file is part of Intersections.jl
-export doublingsearch, binarysearch
+# This file is part of InvertedFiles.jl
 
-"""
-	binarysearch(A, x, sp=1, ep=length(A))
+using Intersections
+import SimilaritySearch: search
 
-Finds the insertion position of `x` in `A` in the range `sp:ep`
-"""
-function binarysearch(A, x, sp=1, ep=length(A))
-	while sp < ep
-		mid = div(sp + ep, 2)
-		@inbounds if x <= A[mid]
-			ep = mid
-		else
-			sp = mid + 1
+function icos(W, Q, I, res::KnnResult, findpos=doublingsearch)
+	P = ones(Int, length(Q))  # TODO: remove extra allocations
+
+	for i in I
+		d = 1.0
+		for j in eachindex(P)
+			p = findpos(Q[j].I, i, P[j])
+			#@show (i, j, p, Q[j].W[p], W[j])
+			d -= Q[j].W[p] * W[j]
+			P[j] = p + 1
 		end
+
+		push!(res, i, d)
 	end
-	
-	@inbounds x <= A[sp] ? sp : sp + 1
+
+	res
 end
 
-"""
-	doublingsearch(A, x, sp=1, ep=length(A))
+function search(idx::InvertedFile, q::DVEC, res::KnnResult)
+	n = length(q)
+	Q = Vector{PostingList}(undef, n) # TODO: remove extra allocations
+	W = Vector{Float32}(undef, n)
 
-Finds the insertion position of `x` in `A`, starting at `sp`
-"""
-function doublingsearch(A, x, sp=1, ep=length(A))
-	p = 0
-    i = 1
+	i = 0
+	for (tokenID, weight) in q
+		i += 1
+		Q[i] = idx.lists[tokenID]
+		W[i] = weight
+		
+	end
 
-    @inbounds while sp+i <= ep && A[sp+i] < x
-		p = i
-		i += i
-    end
+	if n == 2
+		I = baezayates(Q[1].I, Q[2].I)
+	else
+		I = svs([plist.I for plist in Q]) # TODO: remove extra allocations
+	end
 
-    binarysearch(A, x, sp + p, min(ep, sp+i))
+	icos(W, Q, I, res)
 end
-

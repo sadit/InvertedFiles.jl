@@ -1,4 +1,4 @@
-# This file is a part of InvertedIndex.jl
+# This file is a part of InvertedFiles.jl
 
 import Base: +, -, *, /, ==, zero
 using LinearAlgebra, SparseArrays
