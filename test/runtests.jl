@@ -50,11 +50,7 @@ end
 @testset "InvertedFile" begin
     A = [normalize!(rand(300)) for i in 1:1000]
     B = [SVEC(enumerate(a)) for a in A]
-
-    I = InvertedFile()
-    append!(I, B)
-    #@info I
-    #@info vectors(I)
+    I = append!(InvertedFile(), B)
 
     k = 30
     for i in 1:10
@@ -66,9 +62,12 @@ end
 
     k = 30
     for i in 1:10
+        @info i
         qid = rand(1:length(A))
-        Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
-        Bres = search(I, B[qid], KnnResult(k))
+        @time Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        @time Bres = search(I, B[qid], KnnResult(k))
+        @time Cres = search(I, B[qid], KnnResult(k); intersection=true)
         @test scores(Ares, Bres).recall == 1.0
+        @show scores(Ares, Bres).recall, scores(Ares, Cres).recall
     end
 end

@@ -1,1 +1,9 @@
-
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+*~
+.vscode*
+.git*
+.ipynb*
+Manifest.toml
+docs/build/*

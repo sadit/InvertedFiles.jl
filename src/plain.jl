@@ -4,6 +4,7 @@ using SimilaritySearch, LinearAlgebra
 
 export InvertedFile, prune, vectors
 
+
 mutable struct InvertedFile{U,I,F} <: AbstractSearchContext
     lists::Dict{U,PostingList{I,F}}
     n::Int
