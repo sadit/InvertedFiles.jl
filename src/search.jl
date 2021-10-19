@@ -4,6 +4,7 @@ using Intersections: _sort!, _remove_empty!
 import SimilaritySearch: search
 export isearch, usearch, search
 
+#=
 """
 	icos(L, I, res::KnnResult, findpos=doublingsearch)
 
@@ -25,7 +26,12 @@ function icos(L, I, res::KnnResult, findpos=doublingsearch)
 	end
 
 	res
+end=#
+
+function prepare_posting_lists_for_querying(idx, q)
+	[PostingList(idx.lists[tokenID], weight) for (tokenID, weight) in q]
 end
+
 
 """
 	isearch(idx::InvertedFile, q::DVEC, res::KnnResult)
@@ -33,13 +39,28 @@ end
 Searches `q` in `idx` using the cosine dissimilarity, it computes a partial operation on `idx`. `res` specify the query.
 """
 function isearch(idx::InvertedFile, q::DVEC, res::KnnResult)
-	L = prepare_posting_lists_for_querying(idx, q)
-	I = svs([plist.I for plist in L]) # TODO: remove extra allocations
-	icos(L, I, res)
+	Q = prepare_posting_lists_for_querying(idx, q)
+
+	bk(Q) do L, P
+		w = 1.0
+		@inbounds @simd for i in eachindex(P)
+			w -= L[i].W[P[i]] * L[i].weight
+		end
+
+		push!(res, L[1].I[P[1]], w)
+	end
+
+	res
 end
 
-function ucos(L::T, res::KnnResult) where T
-    sort!(L, by=first)
+"""
+	usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
+
+Searches `q` in `idx` using the cosine dissimilarity, it computes the full operation on `idx`. `res` specify the query
+"""
+function usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
+	L = prepare_posting_lists_for_querying(idx, q)
+	sort!(L, by=first)
     P = ones(Int, length(L))
 
     @inbounds while true
@@ -71,19 +92,7 @@ function ucos(L::T, res::KnnResult) where T
     end
 
     res
-end
 
-function prepare_posting_lists_for_querying(idx, q)
-	[PostingList(idx.lists[tokenID], weight) for (tokenID, weight) in q]
-end
-
-"""
-	usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
-
-Searches `q` in `idx` using the cosine dissimilarity, it computes the full operation on `idx`. `res` specify the query
-"""
-function usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
-	ucos(prepare_posting_lists_for_querying(idx, q), res)
 end
 
 """

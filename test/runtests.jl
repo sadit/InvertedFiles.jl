@@ -68,6 +68,30 @@ end
         @time Bres = search(I, B[qid], KnnResult(k))
         @time Cres = search(I, B[qid], KnnResult(k); intersection=true)
         @test scores(Ares, Bres).recall == 1.0
+        @test scores(Ares, Cres).recall == 1.0
+    end
+
+    # increasing sparsity of the arrays
+    for A_ in A
+        t = partialsort(A_, 7, rev=true)
+        for i in eachindex(A_)
+            A_[i] = A_[i] < t ? 0.0 : A_[i]
+        end
+    end
+
+    create_sparse(A_) = SVEC([i => a for (i, a) in enumerate(A_) if a > 0.0])
+
+    B = [create_sparse(A_) for A_ in A]
+    I = append!(InvertedFile(), B)
+    k = 1  # the aggresive cut of the attributes need a small k
+    for i in 1:10
+        @info i
+        qid = rand(1:length(A))
+        @time Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        @time Bres = search(I, B[qid], KnnResult(k))
+        @time Cres = search(I, B[qid], KnnResult(k); intersection=true)
+        @test scores(Ares, Bres).recall == 1.0
+        @test scores(Ares, Cres).recall > 0.8
         @show scores(Ares, Bres).recall, scores(Ares, Cres).recall
     end
 end

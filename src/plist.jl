@@ -15,11 +15,11 @@ PostingList(plist::PostingList{IType,WType}, w=0.0) where {IType,WType} = Postin
 
 @inline Base.length(plist::PostingList) = length(plist.I)
 @inline Base.eachindex(plist::PostingList) = eachindex(plist.I)
-@inline Base.getindex(plist::PostingList, index) = (plist.I[index], plist.W[index])
-@inline Intersections._get_key(plist::PostingList, i) = plist.I[i]
+@inline Base.getindex(plist::PostingList, index) = @inbounds (plist.I[index], plist.W[index])
+@inline Intersections._get_key(plist::PostingList, i) = @inbounds plist.I[i]
 
-@inline Base.first(plist::PostingList) = plist[1]
-@inline Base.last(plist::PostingList) = plist[end]
+@inline Base.first(plist::PostingList) = @inbounds plist[1]
+@inline Base.last(plist::PostingList) = @inbounds plist[end]
 
 function Base.setindex!(plist::PostingList, pair, index)
     plist.I[index] = first(pair)
