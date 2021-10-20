@@ -29,7 +29,16 @@ function icos(L, I, res::KnnResult, findpos=doublingsearch)
 end=#
 
 function prepare_posting_lists_for_querying(idx, q)
-	[PostingList(idx.lists[tokenID], weight) for (tokenID, weight) in q]
+	Q = valtype(idx.lists)[]
+	for (tokenID, weight) in q
+		plist = get(idx.lists, tokenID, nothing)
+		if plist !== nothing
+			plist = PostingList(plist, weight)
+			push!(Q, plist)
+		end
+	end
+	
+	Q
 end
 
 
@@ -58,7 +67,7 @@ end
 
 Searches `q` in `idx` using the cosine dissimilarity, it computes the full operation on `idx`. `res` specify the query
 """
-function usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
+#=function usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
 	L = prepare_posting_lists_for_querying(idx, q)
 	sort!(L, by=first)
     P = ones(Int, length(L))
@@ -93,6 +102,20 @@ function usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
 
     res
 
+end =#
+
+function usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
+	Q = prepare_posting_lists_for_querying(idx, q)
+	umerge(Q) do L, P, m
+		w = 1.0 - L[1].weight * L[1].W[P[1]]
+		@inbounds @simd for i in 2:m
+			w -= L[i].weight * L[i].W[P[i]]
+		end
+
+		@inbounds push!(res, L[1].I[P[1]], w)
+	end
+
+    res
 end
 
 """
