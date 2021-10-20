@@ -2,31 +2,7 @@
 
 using Intersections: _sort!, _remove_empty!
 import SimilaritySearch: search
-export isearch, usearch, search
-
-#=
-"""
-	icos(L, I, res::KnnResult, findpos=doublingsearch)
-
-Computes the cosine similarity on the intersection `I`
-"""
-function icos(L, I, res::KnnResult, findpos=doublingsearch)
-	P = ones(Int, length(L))  # TODO: remove extra allocations
-
-	for i in I
-		d = 1.0
-		for j in eachindex(P)
-			plist = L[j]
-			p = findpos(plist.I, i, P[j])
-			d -= plist.W[p] * plist.weight
-			P[j] = p + 1
-		end
-
-		push!(res, i, d)
-	end
-
-	res
-end=#
+export isearch, usearch, search, prepare_posting_lists_for_querying
 
 function prepare_posting_lists_for_querying(idx, q)
 	Q = valtype(idx.lists)[]
