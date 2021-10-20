@@ -44,7 +44,6 @@ Random.seed!(0)
         @test abs(evaluate(adist, aL[i], aL[i+1]) - evaluate(adist, AL[i], AL[i+1])) < 1e-3
         @test abs(evaluate(cdist, aL[i], aL[i+1]) - evaluate(cdist, AL[i], AL[i+1])) < 1e-3
     end
-
 end
 
 @testset "InvertedFile" begin
@@ -71,12 +70,14 @@ end
         @test scores(Ares, Cres).recall == 1.0
     end
 
+    ## working on sparse data
     # increasing sparsity of the arrays
     for A_ in A
         t = partialsort(A_, 7, rev=true)
         for i in eachindex(A_)
             A_[i] = A_[i] < t ? 0.0 : A_[i]
         end
+        normalize!(A_)
     end
 
     create_sparse(A_) = SVEC([i => a for (i, a) in enumerate(A_) if a > 0.0])
@@ -94,4 +95,48 @@ end
         @test scores(Ares, Cres).recall > 0.8
         @show scores(Ares, Bres).recall, scores(Ares, Cres).recall
     end
+
+    ## extracting vectors and reconstructing the inverted file
+    V = vectors(I)
+    @test Set(keys(B)) == Set(keys(V))
+    @show typeof(B), typeof(V)
+    dist = CosineDistance()
+    for i in eachindex(B)
+        @test evaluate(dist, B[i], V[i]) <= 1e-3
+    end
+
+    J = append!(InvertedFile(), V)
+    @test Set(keys(I.lists)) == Set(keys(J.lists))
+    for i in keys(I.lists)
+        @test I.lists[i].I == J.lists[i].I
+        @test I.lists[i].W == J.lists[i].W
+    end
+    
+    for i in 1:10
+        @info i
+        qid = rand(1:length(A))
+        @time Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        @time Bres = search(J, B[qid], KnnResult(k))
+        @time Cres = search(J, B[qid], KnnResult(k); intersection=true)
+        
+        @test scores(Ares, Bres).recall == 1.0
+        @test scores(Ares, Cres).recall > 0.8
+    end
+
+    ## Manipulating vectors
+    @info sort!(length.(values(I.lists)), rev=true)
+    V = vectors(I, maxlen=27, top=10)
+    J = append!(InvertedFile(), V)
+    @info sort!(length.(values(J.lists)), rev=true)
+    
+    recall = 0.0
+    for i in 1:20
+        @info i
+        qid = rand(1:length(A))
+        @time Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        @time Bres = search(J, B[qid], KnnResult(k))        
+        recall += scores(Ares, Bres).recall
+    end
+    @test recall / 10  > 0.6
 end
+

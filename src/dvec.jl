@@ -10,8 +10,10 @@ export centroid, evaluate, NormalizedAngleDistance, NormalizedCosineDistance, An
 
 const DVEC{Ti,Tv<:Number} = Dict{Ti,Tv}
 const SVEC = DVEC{UInt64,Float32}
+const SVEC64 = DVEC{UInt64,Float64}
+const SVEC32 = DVEC{UInt32,Float32}
 
-export DVEC, SVEC
+export DVEC, SVEC, SVEC32, SVEC64
 nnz(dvec::DVEC) = length(dvec)
 
 function Base.findmax(voc::DVEC{I,F}) where {I,F}
@@ -69,7 +71,7 @@ function normalize!(bow::DVEC{Ti,Tv}) where {Ti,Tv<:Integer}
     bow
 end
 
-function normalize!(matrix::AbstractVector{DVEC})
+function normalize!(matrix::AbstractVector{<:DVEC})
     for bow in matrix
         normalize!(bow)
     end
@@ -154,11 +156,11 @@ function add!(a::DVEC{Ti,Tv}, b::Pair{Ti,Tv}) where {Ti,Tv<:Real}
 end
 
 """
-    Base.sum(col::AbstractVector{T}) where {T<:DVEC}
+    Base.sum(col::AbstractVector{<:DVEC})
 
 Computes the sum of the given list of vectors
 """
-function Base.sum(col::AbstractVector{T}) where {T<:DVEC}
+function Base.sum(col::AbstractVector{<:DVEC})
     v = copy(col[1])
     for i in 2:length(col)
         add!(v, col[i])

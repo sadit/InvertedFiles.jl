@@ -39,10 +39,9 @@ function Base.push!(idx::InvertedFile{TokenType,IntType,FloatType}, p::Pair) whe
     id_, vec_ = p
 
     @inbounds for (tokenID, weight) in vec_
-        P = if haskey(idx.lists, tokenID)
-            idx.lists[tokenID]
-        else
-            idx.lists[tokenID] = PostingList{IntType,FloatType}()
+        P = get(idx.lists, tokenID, nothing)
+        if P === nothing
+            idx.lists[tokenID] = P = PostingList{IntType,FloatType}()
         end
 
         push!(P.I, id_)
@@ -60,31 +59,20 @@ than `maxlen`. Default values don't change the original vectors.
 Resulting vectors are normalized if `normalize=true`.
 
 """
-function vectors(idx::InvertedFile{U,I,F}; minweight=0.0, top=typemax(I), maxlen=idx.n, normalize=false) where {U,I,F} 
-    D = Dict{I,Dict{U,F}}()
-    
+function vectors(idx::InvertedFile{U,I,F}; minweight=0.0, top=typemax(I), maxlen=idx.n, normalize=false) where {U,I,F}
+    D = [Dict{U,F}() for i in 1:idx.n]
+
     for (tokenID, plist) in idx.lists
         length(plist) > maxlen && continue
-        plist = top < length(plist) ? topk(plist) : plist
+        plist = top < length(plist) ? topk(plist, top) : plist
 
         @inbounds for i in eachindex(plist)
             docID, weight = plist[i]            
-            weight < minweight && continue
-
-            v = get(D, docID, nothing)
-            if v === nothing
-                D[docID] = Dict{U,F}(tokenID => weight)
-            else
-                D[docID][tokenID] = weight
-            end
+            weight < minweight && continue            
+            D[docID][tokenID] = weight
         end
     end
 
-    if normalize
-        for v in values(D)
-            normalize!(v)
-        end
-    end
-
+    normalize && normalize!(D)
     D
 end
