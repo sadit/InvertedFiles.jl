@@ -1,7 +1,7 @@
 name = "InvertedFiles"
 uuid = "b20bd276-2c70-11ec-161a-3d1e1109a1c3"
 authors = ["Eric S. Tellez <donsadit@gmail.com> and contributors"]
-version = "0.1.3"
+version = "0.1.2"
 
 [deps]
 Intersections = "6d0fbc77-481e-44fe-9ace-1653ddcdea34"
