@@ -9,7 +9,7 @@ struct PostingList{IType,WType} <: AbstractVector{Tuple{IType,WType}}
     weight::Float64  # useful for search time and saving global data
 end
 
-eltype(::PostingList{I,W}) where {I,W} = Tuple{I,W}
+Base.eltype(::PostingList{I,W}) where {I,W} = Tuple{I,W}
 PostingList{IType,WType}() where {IType,WType} = PostingList{IType,WType}(IType[], WType[], 0.0)
 PostingList(I::Vector{IType}, W::Vector{WType}, w=0.0) where {IType,WType} = PostingList{IType,WType}(I, W, w)
 PostingList(plist::PostingList{IType,WType}, w=0.0) where {IType,WType} = PostingList{IType,WType}(plist.I, plist.W, w)
@@ -26,17 +26,4 @@ PostingList(plist::PostingList{IType,WType}, w=0.0) where {IType,WType} = Postin
 function Base.setindex!(plist::PostingList, pair, index)
     plist.I[index] = first(pair)
     plist.W[index] = last(pair)
-end
-
-function topk(plist::PostingList{I,F}, top) where {I,F}
-    T = KnnResult(I[], F[], top)
-    for i in eachindex(plist)
-        push!(T, plist.I[i], -plist.W[i])
-    end
-
-    for i in eachindex(T.dist)
-        T.dist[i] = -T.dist[i]
-    end
-
-    sort!(PostingList(T.id, T.dist))
 end

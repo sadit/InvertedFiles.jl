@@ -1,22 +1,31 @@
 # This file is part of InvertedFiles.jl
 
 using SimilaritySearch, LinearAlgebra
+export InvertedFile
 
-export InvertedFile, prune, vectors
+#mutable struct InvertedFile{U,PostingType<:PostingList} <: AbstractSearchContext
+#    lists::Dict{U,PostingType}
+#    n::Int
+#end
 
-
-mutable struct InvertedFile{U,I,F} <: AbstractSearchContext
-    lists::Dict{U,PostingList{I,F}}
+mutable struct InvertedFile{I,F,MapType} <: AbstractSearchContext
+    lists::Vector{PostingList{I,F}}
     n::Int
+    map::MapType
 end
 
-InvertedFile{U,I,F}() where {U,I,F} = InvertedFile{U,I,F}(Dict{U,PostingList{I,F}}(), 0)
-InvertedFile() = InvertedFile{UInt64,Int32,Float32}()
+function InvertedFile(vocsize::Integer, I=Int32, F=Float32)
+    InvertedFile([PostingList{I,F}() for i in 1:vocsize], 0, nothing)
+end
+
+function InvertedFile(U=UInt64, I=Int32, F=Float32)
+    InvertedFile(Vector{PostingList{I,F}}(undef, 0), 0, Dict{U,I}())
+end
 
 Base.show(io::IO, idx::InvertedFile) = print(io, "{$(typeof(idx)) vocsize=$(length(idx.lists)), n=$(idx.n)}")
 
 """
-    Base.append!(idx::InvertedFile, db)
+    Base.append!(idx::InvertedFile, db; parallel=false)
 
 Appends all vectors in db to the index
 """
@@ -34,45 +43,29 @@ end
 Inserts a weighted vector into the index.
 
 """
-function Base.push!(idx::InvertedFile{TokenType,IntType,FloatType}, p::Pair) where {TokenType,IntType,FloatType}
+function Base.push!(idx::InvertedFile{I,F,<:Dict}, p::Pair) where {I,F}
     idx.n += 1
     id_, vec_ = p
 
-    @inbounds for (tokenID, weight) in vec_
-        P = get(idx.lists, tokenID, nothing)
-        if P === nothing
-            idx.lists[tokenID] = P = PostingList{IntType,FloatType}()
+    @inbounds for (token, weight) in vec_
+        m = length(idx.lists)
+        tokenID = get!(idx.map, token, m + 1)
+        if tokenID > m
+            push!(idx.lists, PostingList{I,F}())
         end
-
+        P = idx.lists[tokenID]
         push!(P.I, id_)
         push!(P.W, weight)
     end
 end
 
-"""
-    vectors(idx::InvertedFile{U,I,F}; minweight=0.0, maxk=typemax(I), normalize=true) where {U,I,F} 
+function Base.push!(idx::InvertedFile{I,F,Nothing}, p::Pair) where {I,F}
+    idx.n += 1
+    id_, vec_ = p
 
-Reconstruct vectors from the inverted index.
-You can prune the vectors accepting only entries having at least a weight of `minweight`,
-or keeping top entries per posting list. You can also ignore taking attributes from posting lists larger
-than `maxlen`. Default values don't change the original vectors.
-Resulting vectors are normalized if `normalize=true`.
-
-"""
-function vectors(idx::InvertedFile{U,I,F}; minweight=0.0, top=typemax(I), maxlen=idx.n, normalize=false) where {U,I,F}
-    D = [Dict{U,F}() for i in 1:idx.n]
-
-    for (tokenID, plist) in idx.lists
-        length(plist) > maxlen && continue
-        plist = top < length(plist) ? topk(plist, top) : plist
-
-        @inbounds for i in eachindex(plist)
-            docID, weight = plist[i]            
-            weight < minweight && continue            
-            D[docID][tokenID] = weight
-        end
+    @inbounds for (tokenID, weight) in vec_
+        P = idx.lists[tokenID]
+        push!(P.I, id_)
+        push!(P.W, weight)
     end
-
-    normalize && normalize!(D)
-    D
 end

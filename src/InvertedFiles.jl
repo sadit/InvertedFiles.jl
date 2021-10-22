@@ -7,4 +7,5 @@ module InvertedFiles
     include("plist.jl")
     include("plain.jl")
     include("search.jl")
+    include("pruning.jl")
 end

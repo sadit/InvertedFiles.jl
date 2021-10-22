@@ -4,19 +4,21 @@ using Intersections: _sort!, _remove_empty!
 import SimilaritySearch: search
 export isearch, usearch, search, prepare_posting_lists_for_querying
 
-function prepare_posting_lists_for_querying(idx, q)
+function prepare_posting_lists_for_querying(idx::InvertedFile{I,F,Nothing}, q) where {I,F}
+	@inbounds [PostingList(idx.lists[tokenID], weight) for (tokenID, weight) in q if length(idx.lists[tokenID]) > 0]
+end
+
+function prepare_posting_lists_for_querying(idx::InvertedFile{I,F,<:Dict}, q) where {I,F}
 	Q = valtype(idx.lists)[]
-	for (tokenID, weight) in q
-		plist = get(idx.lists, tokenID, nothing)
-		if plist !== nothing
-			plist = PostingList(plist, weight)
-			push!(Q, plist)
+	for (token, weight) in q
+		tokenID = get(idx.map, token, 0)
+		if tokenID > 0 && length(idx.lists[tokenID]) > 0
+			@inbounds push!(Q, PostingList(idx.lists[tokenID], weight))
 		end
 	end
 	
 	Q
 end
-
 
 """
 	isearch(idx::InvertedFile, q::DVEC, res::KnnResult)

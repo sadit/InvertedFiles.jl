@@ -49,6 +49,19 @@ end
 @testset "InvertedFile" begin
     A = [normalize!(rand(300)) for i in 1:1000]
     B = [SVEC(enumerate(a)) for a in A]
+
+    # testing with Vector container (map=nothing)
+    I = append!(InvertedFile(300), B)
+
+    k = 30
+    for i in 1:10
+        qid = rand(1:length(A))
+        Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        Bres = search(I, B[qid], KnnResult(k))
+        @test scores(Ares, Bres).recall == 1.0
+    end
+
+    # testing with Dict container (map != nothing)
     I = append!(InvertedFile(), B)
 
     k = 30
@@ -58,6 +71,7 @@ end
         Bres = search(I, B[qid], KnnResult(k))
         @test scores(Ares, Bres).recall == 1.0
     end
+
 
     k = 30
     for i in 1:10
@@ -105,13 +119,7 @@ end
         @test evaluate(dist, B[i], V[i]) <= 1e-3
     end
 
-    J = append!(InvertedFile(), V)
-    @test Set(keys(I.lists)) == Set(keys(J.lists))
-    for i in keys(I.lists)
-        @test I.lists[i].I == J.lists[i].I
-        @test I.lists[i].W == J.lists[i].W
-    end
-    
+    J = append!(InvertedFile(300), V)
     for i in 1:10
         @info i
         qid = rand(1:length(A))
@@ -123,10 +131,12 @@ end
         @test scores(Ares, Cres).recall > 0.8
     end
 
+
     ## Manipulating vectors
     @info sort!(length.(values(I.lists)), rev=true)
-    V = vectors(I, maxlen=27, top=10)
-    J = append!(InvertedFile(), V)
+    K = append!(InvertedFile(300), V)
+    V = vectors(K, maxlen=27, top=10)
+    J = append!(InvertedFile(300), V)
     @info sort!(length.(values(J.lists)), rev=true)
     
     recall = 0.0
@@ -138,5 +148,7 @@ end
         recall += scores(Ares, Bres).recall
     end
     @test recall / 10  > 0.6
+    @info "finished"
+
 end
 
