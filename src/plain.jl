@@ -31,7 +31,7 @@ Appends all vectors in db to the index
 """
 function Base.append!(idx::InvertedFile, db)
     for i in eachindex(db)
-        push!(idx, i => db[i])
+        push!(idx, idx.n+1 => db[i])
     end
 
     idx
