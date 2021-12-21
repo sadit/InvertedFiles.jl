@@ -21,43 +21,45 @@ function prepare_posting_lists_for_querying(idx::InvertedFile{I,F,<:Dict}, q) wh
 end
 
 """
-	isearch(idx::InvertedFile, q::DVEC, res::KnnResult)
+	isearch(idx::InvertedFile, q::DVEC, res::AbstractKnnResult)
 
 Searches `q` in `idx` using the cosine dissimilarity, it computes a partial operation on `idx`. `res` specify the query.
 """
-function isearch(idx::InvertedFile, q::DVEC, res::KnnResult)
+function isearch(idx::InvertedFile, q::DVEC, res::AbstractKnnResult)
 	Q = prepare_posting_lists_for_querying(idx, q)
-
+	st = initialstate(res)
 	bk(Q) do L, P
 		w = 1.0
 		@inbounds @simd for i in eachindex(P)
 			w -= L[i].W[P[i]] * L[i].weight
 		end
 
-		push!(res, L[1].I[P[1]], w)
+		@inbounds st = push!(res, st, L[1].I[P[1]], w)
 	end
 
-	res
+	(res=res, st=st, cost=0)
 end
 
 """
-	usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
+	usearch(idx::InvertedFile, q::DVEC, res::AbstractKnnResult)
 
 Searches `q` in `idx` using the cosine dissimilarity, it computes the full operation on `idx`. `res` specify the query
 """
 
-function usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
+function usearch(idx::InvertedFile, q::DVEC, res::AbstractKnnResult)
 	Q = prepare_posting_lists_for_querying(idx, q)
+	st = initialstate(res)
+
 	umerge(Q) do L, P, m
 		w = 1.0 - L[1].weight * L[1].W[P[1]]
 		@inbounds @simd for i in 2:m
 			w -= L[i].weight * L[i].W[P[i]]
 		end
 
-		@inbounds push!(res, L[1].I[P[1]], w)
+		@inbounds st = push!(res, st, L[1].I[P[1]], w)
 	end
 
-    res
+    (res=res, st=st, cost=0)
 end
 
 """

@@ -1,7 +1,7 @@
 name = "InvertedFiles"
 uuid = "b20bd276-2c70-11ec-161a-3d1e1109a1c3"
 authors = ["Eric S. Tellez <donsadit@gmail.com> and contributors"]
-version = "0.1.4"
+version = "0.1.5"
 
 [deps]
 Intersections = "6d0fbc77-481e-44fe-9ace-1653ddcdea34"
@@ -12,8 +12,8 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
 Intersections = "0.2"
-SimilaritySearch = "0.7, 0.8"
-julia = "1"
+SimilaritySearch = "0.8"
+julia = "1.6"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

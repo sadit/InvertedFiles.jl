@@ -56,9 +56,9 @@ end
     k = 30
     for i in 1:10
         qid = rand(1:length(A))
-        Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
-        Bres = search(I, B[qid], KnnResult(k))
-        @test scores(Ares, Bres).recall == 1.0
+        a = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        b = search(I, B[qid], KnnResult(k))
+        @test recallscore(a.res, b.res) == 1.0
     end
 
     # testing with Dict container (map != nothing)
@@ -67,21 +67,20 @@ end
     k = 30
     for i in 1:10
         qid = rand(1:length(A))
-        Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
-        Bres = search(I, B[qid], KnnResult(k))
-        @test scores(Ares, Bres).recall == 1.0
+        a = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        b = search(I, B[qid], KnnResult(k))
+        @test recallscore(a.res, b.res) == 1.0
     end
-
 
     k = 30
     for i in 1:10
         @info i
         qid = rand(1:length(A))
-        @time Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
-        @time Bres = search(I, B[qid], KnnResult(k))
-        @time Cres = search(I, B[qid], KnnResult(k); intersection=true)
-        @test scores(Ares, Bres).recall == 1.0
-        @test scores(Ares, Cres).recall == 1.0
+        @time a = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        @time b = search(I, B[qid], KnnResult(k))
+        @time c = search(I, B[qid], KnnResult(k); intersection=true)
+        @test recallscore(a.res, b.res) == 1.0
+        @test recallscore(a.res, c.res) == 1.0
     end
 
     ## working on sparse data
@@ -102,12 +101,12 @@ end
     for i in 1:10
         @info i
         qid = rand(1:length(A))
-        @time Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
-        @time Bres = search(I, B[qid], KnnResult(k))
-        @time Cres = search(I, B[qid], KnnResult(k); intersection=true)
-        @test scores(Ares, Bres).recall == 1.0
-        @test scores(Ares, Cres).recall > 0.8
-        @show scores(Ares, Bres).recall, scores(Ares, Cres).recall
+        @time a = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        @time b = search(I, B[qid], KnnResult(k))
+        @time c = search(I, B[qid], KnnResult(k); intersection=true)
+        @test recallscore(a.res, b.res) == 1.0
+        @test recallscore(a.res, c.res) > 0.8
+        @show recallscore(a.res, b.res), recallscore(a.res, c.res)
     end
 
     ## extracting vectors and reconstructing the inverted file
@@ -123,14 +122,13 @@ end
     for i in 1:10
         @info i
         qid = rand(1:length(A))
-        @time Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
-        @time Bres = search(J, B[qid], KnnResult(k))
-        @time Cres = search(J, B[qid], KnnResult(k); intersection=true)
+        @time a = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        @time b = search(J, B[qid], KnnResult(k))
+        @time c = search(J, B[qid], KnnResult(k); intersection=true)
         
-        @test scores(Ares, Bres).recall == 1.0
-        @test scores(Ares, Cres).recall > 0.8
+        @test recallscore(a.res, b.res) == 1.0
+        @test recallscore(a.res, c.res) > 0.8
     end
-
 
     ## Manipulating vectors
     @info sort!(length.(values(I.lists)), rev=true)
@@ -139,15 +137,15 @@ end
     J = append!(InvertedFile(300), V)
     @info sort!(length.(values(J.lists)), rev=true)
     
-    recall = 0.0
+    recall_ = 0.0
     for i in 1:20
         @info i
         qid = rand(1:length(A))
-        @time Ares = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
-        @time Bres = search(J, B[qid], KnnResult(k))        
-        recall += scores(Ares, Bres).recall
+        @time a = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        @time b = search(J, B[qid], KnnResult(k))        
+        recall_ += recallscore(a.res, b.res)
     end
-    @test recall / 10  > 0.6
+    @test recall_ / 10  > 0.6
     @info "finished"
 
 end
