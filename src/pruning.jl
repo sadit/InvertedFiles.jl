@@ -39,9 +39,8 @@ end
 
 function topk(plist::PostingList{I,F}, top) where {I,F}
     T = KnnResult(I[], F[], top)
-    st = initialstate(T)
     for i in eachindex(plist)
-        st = push!(T, st, plist.I[i], -plist.W[i])
+        push!(T, plist.I[i], -plist.W[i])
     end
 
     for i in eachindex(T.dist)
