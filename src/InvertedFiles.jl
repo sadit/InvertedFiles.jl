@@ -6,10 +6,8 @@ module InvertedFiles
     include("dvec.jl")
     include("svecutils.jl")
     include("sort.jl")
-    include("wlists.jl")
     include("winvfile.jl")
     include("winvfilesearch.jl")
     include("binvfile.jl")
     include("binvfilesearch.jl")
-    include("pruning.jl")
 end

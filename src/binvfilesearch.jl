@@ -5,12 +5,12 @@ export search, prepare_posting_lists_for_querying
 
 function prepare_posting_lists_for_querying(idx::BinaryInvertedFile, q, Q=nothing)
 	if Q === nothing
-		Q = valtype(idx.lists)[]
+		Q = valtype(idx.rowvals)[]
 	end
 	
 	for tokenID in q
-		if length(idx.lists[tokenID]) > 0
-			@inbounds push!(Q, idx.lists[tokenID])
+		if length(idx.rowvals[tokenID]) > 0
+			@inbounds push!(Q, idx.rowvals[tokenID])
 		end
 	end
 	
@@ -28,7 +28,7 @@ function search(idx::BinaryInvertedFile, q, res::KnnResult; pools=nothing)
 
 	umerge(Q) do L, P, isize
         @inbounds objID = L[1][P[1]]
-		m = idx.sizes[objID]
+		m = idx.nonzeros[objID]
         d = set_distance_evaluate(idx.dist, isize, n, m)
 		@inbounds push!(res, objID, d)
 	end

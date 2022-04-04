@@ -22,5 +22,29 @@ function sortlastpush!(id::AbstractVector)
         id[N] = id_
     end
 
-    id
+    nothing
+end
+
+function sortlastpush!(id::AbstractVector, dist)
+    sp = 1
+    pos = N = lastindex(id)
+    id_ = id[end]
+    dist_ = dist[end]
+    
+    @inbounds while pos > sp && id_ < id[pos-1]
+        pos -= 1
+    end
+
+    @inbounds if pos < N
+        while N > pos
+            id[N] = id[N-1]
+            dist[N] = dist[N-1]
+            N -= 1
+        end
+
+        dist[N] = dist_
+        id[N] = id_
+    end
+
+    nothing
 end

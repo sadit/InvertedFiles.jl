@@ -1,81 +1,72 @@
 # This file is part of InvertedFiles.jl
 
 using SimilaritySearch, LinearAlgebra
-export InvertedFile
+export WeightedInvertedFile
 
-#mutable struct InvertedFile{U,PostingType<:PostingList} <: AbstractSearchContext
-#    lists::Dict{U,PostingType}
-#    n::Int
-#end
+using Base.Threads: SpinLock, @threads
 
-mutable struct InvertedFile{I,F,MapType} <: AbstractSearchContext
-    lists::Vector{PostingList{I,F}}
-    n::Int
-    map::MapType
+mutable struct WeightedInvertedFile{IntListType<:AbstractVector{<:Integer},RealListType<:AbstractVector{<:Real}} <: AbstractSearchContext
+    rowvals::Vector{IntListType}  ## identifiers
+    nonzeros::Vector{RealListType}  ## weights
+    nnzcount::Vector{Int32}  ## nonzeros elements per vector
+    locks::Vector{SpinLock}
 end
 
-function InvertedFile(vocsize::Integer, I=Int32, F=Float32)
-    InvertedFile([PostingList{I,F}() for i in 1:vocsize], 0, nothing)
+Base.length(idx::WeightedInvertedFile) = length(idx.nnzcount)
+SimilaritySearch.getpools(::WeightedInvertedFile, results=SimilaritySearch.GlobalKnnResult) = results
+
+function WeightedInvertedFile(vocsize::Integer, ::Type{IntType}=Int32, ::Type{RealType}=Float32) where {IntType<:Integer,RealType<:Real}
+    vocsize > 0 || throw(ArgumentError("voc must not be empty"))
+    WeightedInvertedFile([IntType[] for i in 1:vocsize], [RealType[] for i in 1:vocsize], Int32[],  [SpinLock() for i in 1:vocsize])
 end
 
-function InvertedFile(U=UInt64, I=Int32, F=Float32)
-    InvertedFile(Vector{PostingList{I,F}}(undef, 0), 0, Dict{U,I}())
-end
-
-Base.show(io::IO, idx::InvertedFile) = print(io, "{$(typeof(idx)) vocsize=$(length(idx.lists)), n=$(idx.n)}")
+Base.show(io::IO, idx::WeightedInvertedFile) = print(io, "{$(typeof(idx)) vocsize=$(length(idx.rowvals)), n=$(length(idx))}")
 
 """
-    Base.append!(idx::InvertedFile, db; parallel=false)
+    Base.append!(idx::WeightedInvertedFile, db::AbstractDatabase; parallel=false)
 
-Appends all vectors in db to the index
+Appends all `db` elements into the index
 """
-function Base.append!(idx::InvertedFile, db)
-    for i in eachindex(db)
-        push!(idx, idx.n+1 => db[i])
-    end
-
-    idx
-end
-
-"""
-    push!(index::InvertedFile, p::Pair)
-
-Inserts a weighted vector into the index.
-
-"""
-function Base.push!(idx::InvertedFile{I,F,<:Dict}, p::Pair) where {I,F}
-    idx.n += 1
-    id_, vec_ = p
-    vec_ = vec_ isa Pair ? zip(vec_[1], vec_[2]) : vec_
-    invmap_push!(idx, id_, vec_)
-end
-
-function invmap_push!(idx::InvertedFile{I,F,<:Dict}, id_, vec_) where {I,F}
-    @inbounds for (token, weight) in vec_
-        m = length(idx.lists)
-        tokenID = get!(idx.map, token, m + 1)
-        if tokenID > m
-            push!(idx.lists, PostingList{I,F}())
+function Base.append!(idx::WeightedInvertedFile, db::AbstractDatabase; parallel_block=1000, pools=nothing, tol=1e-6)
+    parallel_block = min(parallel_block, length(db))
+    startID = length(idx)
+    n = length(db)
+    sp = 1
+    resize!(idx.nnzcount, length(idx) + n)
+    
+    while sp < n
+        ep = min(n, sp + parallel_block)
+        @threads for i in sp:ep
+            objID = i + startID
+            obj = db[i]
+            @inbounds idx.nnzcount[objID] = length(obj)
+            @inbounds for (tokenID, weight) in obj
+                weight < tol && continue
+                try
+                    lock(idx.locks[tokenID])
+                    push!(idx.rowvals[tokenID], objID)
+                    push!(idx.nonzeros[tokenID], weight)
+                    sortlastpush!(idx.rowvals[tokenID], idx.nonzeros[tokenID])
+                finally
+                    unlock(idx.locks[tokenID])
+                end
+            end
         end
-        P = idx.lists[tokenID]
-        push!(P.I, id_)
-        push!(P.W, weight)
+
+        sp = ep + 1
     end
 
     idx
 end
 
-function Base.push!(idx::InvertedFile{I,F,Nothing}, p::Pair) where {I,F}
-    idx.n += 1
-    id_, vec_ = p
-    inv_push!(idx, id_, vec_)
-end
+function Base.push!(idx::WeightedInvertedFile, obj; pools=nothing, tol=1e-6)
+    push!(idx.nnzcount, length(obj))
+    n = length(idx)
 
-function inv_push!(idx::InvertedFile, id_, vec_)
-    @inbounds for (tokenID, weight) in vec_
-        P = idx.lists[tokenID]
-        push!(P.I, id_)
-        push!(P.W, weight)
+    @inbounds for (tokenID, weight) in obj
+        weight < tol && continue
+        push!(idx.rowvals[tokenID], n)
+        push!(idx.nonzeros[tokenID], weight)
     end
 
     idx

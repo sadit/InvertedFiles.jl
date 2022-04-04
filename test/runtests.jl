@@ -46,28 +46,28 @@ Random.seed!(0)
     end
 end
 
-@testset "InvertedFile" begin
+@testset "WeightedInvertedFile" begin
     A = [normalize!(rand(300)) for i in 1:1000]
-    B = [SVEC(enumerate(a)) for a in A]
+    B = VectorDatabase([SVEC(enumerate(a)) for a in A])
 
     # testing with Vector container (map=nothing)
-    I = append!(InvertedFile(300), B)
+    I = append!(WeightedInvertedFile(300), B)
 
     k = 30
     for i in 1:10
         qid = rand(1:length(A))
-        a = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), A[qid], KnnResult(k))
         b = search(I, B[qid], KnnResult(k))
         @test recallscore(a.res, b.res) == 1.0
     end
 
     # testing with Dict container (map != nothing)
-    I = append!(InvertedFile(), B)
+    I = append!(WeightedInvertedFile(300), B)
 
     k = 30
     for i in 1:10
         qid = rand(1:length(A))
-        a = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), A[qid], KnnResult(k))
         b = search(I, B[qid], KnnResult(k))
         @test recallscore(a.res, b.res) == 1.0
     end
@@ -76,11 +76,9 @@ end
     for i in 1:10
         @info i
         qid = rand(1:length(A))
-        @time a = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        @time a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), A[qid], KnnResult(k))
         @time b = search(I, B[qid], KnnResult(k))
-        @time c = search(I, B[qid], KnnResult(k); intersection=true)
         @test recallscore(a.res, b.res) == 1.0
-        @test recallscore(a.res, c.res) == 1.0
     end
 
     ## working on sparse data
@@ -95,58 +93,17 @@ end
 
     create_sparse(A_) = SVEC([i => a for (i, a) in enumerate(A_) if a > 0.0])
 
-    B = [create_sparse(A_) for A_ in A]
-    I = append!(InvertedFile(), B)
+    B = VectorDatabase([create_sparse(A_) for A_ in A])
+    I = append!(WeightedInvertedFile(300), B)
     k = 1  # the aggresive cut of the attributes need a small k
     for i in 1:10
         @info i
         qid = rand(1:length(A))
-        @time a = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
+        @time a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), A[qid], KnnResult(k))
         @time b = search(I, B[qid], KnnResult(k))
-        @time c = search(I, B[qid], KnnResult(k); intersection=true)
         @test recallscore(a.res, b.res) == 1.0
-        @test recallscore(a.res, c.res) > 0.8
-        @show recallscore(a.res, b.res), recallscore(a.res, c.res)
+        @show recallscore(a.res, b.res)
     end
-
-    ## extracting vectors and reconstructing the inverted file
-    V = vectors(I)
-    @test Set(keys(B)) == Set(keys(V))
-    @show typeof(B), typeof(V)
-    dist = CosineDistance()
-    for i in eachindex(B)
-        @test evaluate(dist, B[i], V[i]) <= 1e-3
-    end
-
-    J = append!(InvertedFile(300), V)
-    for i in 1:10
-        @info i
-        qid = rand(1:length(A))
-        @time a = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
-        @time b = search(J, B[qid], KnnResult(k))
-        @time c = search(J, B[qid], KnnResult(k); intersection=true)
-        
-        @test recallscore(a.res, b.res) == 1.0
-        @test recallscore(a.res, c.res) > 0.8
-    end
-
-    ## Manipulating vectors
-    @info sort!(length.(values(I.lists)), rev=true)
-    K = append!(InvertedFile(300), V)
-    V = vectors(K, maxlen=27, top=10)
-    J = append!(InvertedFile(300), V)
-    @info sort!(length.(values(J.lists)), rev=true)
-    
-    recall_ = 0.0
-    for i in 1:20
-        @info i
-        qid = rand(1:length(A))
-        @time a = search(ExhaustiveSearch(CosineDistance(), A), A[qid], KnnResult(k))
-        @time b = search(J, B[qid], KnnResult(k))        
-        recall_ += recallscore(a.res, b.res)
-    end
-    @test recall_ / 10  > 0.6
-    @info "finished"
 
 end
 
