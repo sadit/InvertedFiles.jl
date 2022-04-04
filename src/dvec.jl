@@ -323,7 +323,6 @@ end
 Computes the angle between two DVEC sparse vectors
 
 """
-
 function evaluate(::AngleDistance, a::DVEC, b::DVEC)::Float64
     d = full_cosine(a, b)
 

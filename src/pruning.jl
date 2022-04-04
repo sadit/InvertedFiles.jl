@@ -37,6 +37,11 @@ function vectors(idx::InvertedFile{I,F,M}; minweight=0.0, top=typemax(I), maxlen
     D
 end
 
+"""
+    topk(plist::PostingList{I,F}, top) where {I,F}
+
+Creates a new posting lists with the topk weighted entries
+"""
 function topk(plist::PostingList{I,F}, top) where {I,F}
     T = KnnResult(I[], F[], top)
     for i in eachindex(plist)

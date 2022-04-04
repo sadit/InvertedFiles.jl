@@ -46,7 +46,11 @@ Inserts a weighted vector into the index.
 function Base.push!(idx::InvertedFile{I,F,<:Dict}, p::Pair) where {I,F}
     idx.n += 1
     id_, vec_ = p
+    vec_ = vec_ isa Pair ? zip(vec_[1], vec_[2]) : vec_
+    invmap_push!(idx, id_, vec_)
+end
 
+function invmap_push!(idx::InvertedFile{I,F,<:Dict}, id_, vec_) where {I,F}
     @inbounds for (token, weight) in vec_
         m = length(idx.lists)
         tokenID = get!(idx.map, token, m + 1)
@@ -57,15 +61,22 @@ function Base.push!(idx::InvertedFile{I,F,<:Dict}, p::Pair) where {I,F}
         push!(P.I, id_)
         push!(P.W, weight)
     end
+
+    idx
 end
 
 function Base.push!(idx::InvertedFile{I,F,Nothing}, p::Pair) where {I,F}
     idx.n += 1
     id_, vec_ = p
+    inv_push!(idx, id_, vec_)
+end
 
+function inv_push!(idx::InvertedFile, id_, vec_)
     @inbounds for (tokenID, weight) in vec_
         P = idx.lists[tokenID]
         push!(P.I, id_)
         push!(P.W, weight)
     end
+
+    idx
 end

@@ -4,13 +4,36 @@ using Intersections: _sort!, _remove_empty!
 import SimilaritySearch: search
 export isearch, usearch, search, prepare_posting_lists_for_querying
 
+#=
+const Q_pool = Vector{PostingList{Int32,Float32}}[]
 
-function prepare_posting_lists_for_querying(idx::InvertedFile{I,F,Nothing}, q) where {I,F}
-	@inbounds [PostingList(idx.lists[tokenID], weight) for (tokenID, weight) in q if length(idx.lists[tokenID]) > 0]
+function __init__()
+	for i in 1:Threads.nthreads()
+		push!(Q_pool, PostingList{Int32,Float32}[])
+	end
+end=#
+
+function prepare_posting_lists_for_querying(idx::InvertedFile{I,F,Nothing}, q, Q=nothing) where {I,F}
+	if Q === nothing
+		Q = valtype(idx.lists)[]
+		#Q = Q_pool[Threads.threadid()]
+		#empty!(Q)
+	end
+	
+	for (tokenID, weight) in q
+		if length(idx.lists[tokenID]) > 0
+			@inbounds push!(Q, PostingList(idx.lists[tokenID], weight))
+		end
+	end
+	
+	Q
 end
 
-function prepare_posting_lists_for_querying(idx::InvertedFile{I,F,<:Dict}, q) where {I,F}
-	Q = valtype(idx.lists)[]
+function prepare_posting_lists_for_querying(idx::InvertedFile{I,F,<:Dict}, q, Q=nothing) where {I,F}
+	if Q === nothing
+		Q = valtype(idx.lists)[]
+	end
+
 	for (token, weight) in q
 		tokenID = get(idx.map, token, 0)
 		if tokenID > 0 && length(idx.lists[tokenID]) > 0
@@ -22,11 +45,11 @@ function prepare_posting_lists_for_querying(idx::InvertedFile{I,F,<:Dict}, q) wh
 end
 
 """
-	isearch(idx::InvertedFile, q::DVEC, res::KnnResult)
+	isearch(idx::InvertedFile, q, res::KnnResult)
 
 Searches `q` in `idx` using the cosine dissimilarity, it computes a partial operation on `idx`. `res` specify the query.
 """
-function isearch(idx::InvertedFile, q::DVEC, res::KnnResult)
+function isearch(idx::InvertedFile, q, res::KnnResult)
 	Q = prepare_posting_lists_for_querying(idx, q)
 	bk(Q) do L, P
 		w = 1.0
@@ -41,12 +64,11 @@ function isearch(idx::InvertedFile, q::DVEC, res::KnnResult)
 end
 
 """
-	usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
+	usearch(idx::InvertedFile, q, res::KnnResult)
 
 Searches `q` in `idx` using the cosine dissimilarity, it computes the full operation on `idx`. `res` specify the query
 """
-
-function usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
+function usearch(idx::InvertedFile, q, res::KnnResult)
 	Q = prepare_posting_lists_for_querying(idx, q)
 
 	umerge(Q) do L, P, m
@@ -62,12 +84,12 @@ function usearch(idx::InvertedFile, q::DVEC, res::KnnResult)
 end
 
 """
-	search(idx::InvertedFile, q::DVEC, res::KnnResult; intersection=false)
+	search(idx::InvertedFile, q, res::KnnResult; intersection=false)
 
 Searches `q` in `idx` using the cosine dissimilarity; `res` specify the query.  If `intersection` is true, then
 an approximation is computed based on the intersection of posting lists. Note that intersection could be faster for large lists.
 """
 
-function search(idx::InvertedFile, q::DVEC, res::KnnResult; intersection=false)
+function search(idx::InvertedFile, q, res::KnnResult; intersection=false)
 	intersection ? isearch(idx, q, res) : usearch(idx, q, res)
 end

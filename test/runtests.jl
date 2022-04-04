@@ -150,3 +150,37 @@ end
 
 end
 
+@testset "BinaryInvertedFile" begin
+    vocsize = 128
+    n = 10_000
+    m = 100
+    len = 10
+    k = 10
+    db = VectorDatabase([sort!(unique(rand(1:vocsize, len))) for i in 1:n])
+    queries = VectorDatabase([sort!(unique(rand(1:vocsize, len))) for i in 1:m])
+
+    for dist in [JaccardDistance(), DiceDistance(), CosineDistanceSet(), IntersectionDissimilarity()]
+        S = ExhaustiveSearch(; dist, db)
+        gI, gD = searchbatch(S, queries, k)
+
+        IF = BinaryInvertedFile(vocsize, dist)
+        append!(IF, db)
+        iI, iD = searchbatch(IF, queries, k)
+        
+        recall = macrorecall(gI, iI)
+        @show dist, recall
+        @test recall > 0.95  # sets can be tricky since we can expect many similar distances
+        err = 0.0
+        for i in 1:m
+            d = evaluate(L2Distance(), gD[:, i], iD[:, i])
+            err += d
+            if d > 0.1
+                @info dist, i, gD[:, i], iD[:, i]
+                @info dist, i, gI[:, i], iI[:, i]
+                @info dist, i, queries[i]
+            end
+        end
+        @show dist, err
+        @test err < 0.01  # acc. floating point errors
+    end
+end
