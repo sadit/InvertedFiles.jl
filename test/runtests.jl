@@ -93,7 +93,8 @@ end
 
     create_sparse(A_) = SVEC([i => a for (i, a) in enumerate(A_) if a > 0.0])
 
-    B = VectorDatabase([create_sparse(A_) for A_ in A])
+    #B = VectorDatabase([create_sparse(A_) for A_ in A])
+    B = VectorDatabase(A)
     I = append!(WeightedInvertedFile(300), B)
     k = 1  # the aggresive cut of the attributes need a small k
     for i in 1:10

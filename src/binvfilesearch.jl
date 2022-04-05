@@ -3,14 +3,16 @@
 import SimilaritySearch: search
 export search, prepare_posting_lists_for_querying
 
-function prepare_posting_lists_for_querying(idx::BinaryInvertedFile, q, Q=nothing)
+function prepare_posting_lists_for_querying(idx::BinaryInvertedFile, q, Q=nothing, tol=1e-6)
 	if Q === nothing
-		Q = valtype(idx.rowvals)[]
+		Q = valtype(idx.lists)[]
 	end
 	
-	for tokenID in q
-		if length(idx.rowvals[tokenID]) > 0
-			@inbounds push!(Q, idx.rowvals[tokenID])
+	@inbounds for (tokenID, weight) in sparseiterator(q)
+		weight < tol && continue
+		L = idx.lists[tokenID]
+		if length(L) > 0
+			@inbounds push!(Q, L)
 		end
 	end
 	
@@ -28,7 +30,7 @@ function search(idx::BinaryInvertedFile, q, res::KnnResult; pools=nothing)
 
 	umerge(Q) do L, P, isize
         @inbounds objID = L[1][P[1]]
-		m = idx.nonzeros[objID]
+		@inbounds m = idx.sizes[objID]
         d = set_distance_evaluate(idx.dist, isize, n, m)
 		@inbounds push!(res, objID, d)
 	end
