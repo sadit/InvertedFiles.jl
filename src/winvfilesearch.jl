@@ -36,6 +36,26 @@ Searches `q` in `idx` using the cosine dissimilarity, it computes the full opera
 function search(idx::WeightedInvertedFile, q, res::KnnResult; pools=nothing)
 	Q = prepare_posting_lists_for_querying(idx, q)
 
+	search(idx, Q) do objID, d
+		push!(res, objID, d)
+	end
+
+    (res=res, cost=0)
+end
+
+"""
+	search(callback::Function, idx::WeightedInvertedFile, Q; pools=nothing)
+
+Find candidates for solving query `Q` using `idx`. It calls `callback` on each candidate `(objID, dist)`
+
+# Arguments:
+- `callback`: callback function on each candidate
+- `idx`: inverted index
+- `Q`: the set of involved posting lists, see [`prepare_posting_lists_for_querying`](@ref)
+"""
+function search(callback::Function, idx::WeightedInvertedFile, Q; pools=nothing)
+    n = length(Q)
+
 	umerge(Q) do L, P, m
 		@inbounds w = 1.0 - L[1].val * L[1].W[P[1]]
 		@inbounds objID = L[1].I[P[1]]
@@ -43,8 +63,6 @@ function search(idx::WeightedInvertedFile, q, res::KnnResult; pools=nothing)
 			w -= L[i].val * L[i].W[P[i]]
 		end
 
-		push!(res, objID, w)
+		callback(objID, w)
 	end
-
-    (res=res, cost=0)
 end

@@ -3,6 +3,8 @@
 using SimilaritySearch, LinearAlgebra, SparseArrays
 using Base.Threads: SpinLock, @threads
 
+export AbstractInvertedFile
+
 """
     abstract type AbstractInvertedFile <: AbstractSearchContext end
 
@@ -40,11 +42,12 @@ sparseiterator(db::AbstractDatabase, i) = sparseiterator(db[i])
 `(id, weight)` iterator for `obj` for generic databases.
 """
 sparseiterator(obj::DVEC) = obj
+sparseiterator(obj::KnnResult) = obj
 sparseiterator(obj::AbstractVector{<:AbstractFloat}) = enumerate(obj)
 sparseiterator(obj::AbstractVector{<:Integer}) = ((u, 1) for u in obj)
 sparseiterator(obj::Set) = (convertpair(u) for u in obj)
 sparseiterator(obj::SortedIntSet) = (convertpair(u) for u in obj)
-sparseiterator(obj) = (convertpair(u) for u in obj) 
+sparseiterator(obj) = (convertpair(u) for u in obj)
 
 """
     convertpair(u)
@@ -65,16 +68,16 @@ Appends all `db` elements into the index `idx`. It work in parallel using all av
 - `idx`: The inverted index
 - `db`: The database of sparse objects, it can be only indices if each object is a list of integers or a set of integers (useful for `BinaryInvertedFile`),
     sparse matrices, dense matrices, among other combinations.
+- `n`: The number of items to insert (defaults to all)
 
 # Keyword arguments:
 - `parallel_block`: inserts `parallel_block` elements in parallel, this argument must be larger than `Threads.nthreads()` but also not so large since the algorithm take advantage of small `parallel_block`.
 - `pools`: unused argument but necessary by `searchbatch` (from `SimilaritySearch`)
 - `tol`: controls what is a zero (i.e., weights < tol will be ignored).
 """
-function Base.append!(idx::AbstractInvertedFile, db::AbstractDatabase; parallel_block=1000, pools=nothing, tol=1e-6)
-    parallel_block = min(parallel_block, length(db))
+function Base.append!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(db); parallel_block=1000, pools=nothing, tol=1e-6)
+    parallel_block = min(parallel_block, n)
     startID = length(idx)
-    n = length(db)
     sp = 1
     resize!(idx.sizes, length(idx) + n)
     
