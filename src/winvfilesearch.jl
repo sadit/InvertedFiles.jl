@@ -2,7 +2,7 @@
 
 using Intersections
 import SimilaritySearch: search
-export isearch, usearch, search, prepare_posting_lists_for_querying
+export search, prepare_posting_lists_for_querying
 
 
 """

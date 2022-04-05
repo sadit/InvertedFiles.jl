@@ -3,7 +3,7 @@
 *.jl.mem
 *~
 .vscode*
-.git*
+.git/*
 .ipynb*
 Manifest.toml
 docs/build/*

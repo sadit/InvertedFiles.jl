@@ -337,7 +337,6 @@ function evaluate(::AngleDistance, a::DVEC, b::DVEC)::Float64
     end
 end
 
-
 function full_cosine(a::DVEC, b::DVEC)::Float64
     return dot(a, b) / (norm(a) * norm(b))
 end
