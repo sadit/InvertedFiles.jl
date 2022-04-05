@@ -3,6 +3,11 @@
 import SimilaritySearch: search
 export search, prepare_posting_lists_for_querying
 
+"""
+	prepare_posting_lists_for_querying(idx::BinaryInvertedFile, q, Q=nothing, tol=1e-6)
+
+Fetches and prepares the involved posting lists to solve `q`
+"""
 function prepare_posting_lists_for_querying(idx::BinaryInvertedFile, q, Q=nothing, tol=1e-6)
 	if Q === nothing
 		Q = valtype(idx.lists)[]

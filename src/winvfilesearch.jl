@@ -4,6 +4,12 @@ using Intersections
 import SimilaritySearch: search
 export isearch, usearch, search, prepare_posting_lists_for_querying
 
+
+"""
+	prepare_posting_lists_for_querying(idx::WeightedInvertedFile{I,F}, q, Q=nothing, tol=1e-6)
+
+Fetches and prepares the involved posting lists to solve `q`
+"""
 function prepare_posting_lists_for_querying(idx::WeightedInvertedFile{I,F}, q, Q=nothing, tol=1e-6) where {I,F}
 	if Q === nothing
 		Q = PostingList{I,F}[]
