@@ -1,6 +1,6 @@
 # This file is part of InvertedFiles.jl
 
-export BinaryInvertedFile
+export BinaryInvertedFile, set_distance_evaluate
 
 """
     struct BinaryInvertedFile <: AbstractInvertedFile
