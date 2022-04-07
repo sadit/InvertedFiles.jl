@@ -38,7 +38,7 @@ function sparsevec(vec::DVEC{Ti,Tv}, m=0) where {Ti<:Integer,Tv<:Number}
 end
 
 """
-    sparse(idx::BinaryInvertedFile{IntVec}, one::Type{RealType}=1f0)
+    sparse(idx::BinaryInvertedFile, one::Type{RealType}=1f0)
 
 Creates an sparse matrix (from SparseArrays) from `idx` using `one` as value.
 
@@ -52,10 +52,10 @@ Creates an sparse matrix (from SparseArrays) from `idx` using `one` as value.
  L[m] = 0 0 1 1 0 … 0
 ```
 """
-function sparse(idx::BinaryInvertedFile{IntVec}, one::Type{RealType}=1f0) where {IntVec,RealType<:Real}
+function sparse(idx::BinaryInvertedFile, one::Type{RealType}=1f0) where {RealType<:Real}
     n = length(idx)
-    I = eltype(IntVec)[]
-    J = eltype(IntVec)[]
+    I = eltype(idx.lists[1])[]
+    J = eltype(idx.lists[1])[]
     F = RealType[]
     sizehint!(I, n)
     sizehint!(J, n)
@@ -79,11 +79,11 @@ end
  
 Creates an sparse matrix (from SparseArrays) from `idx`
 """
-function sparse(idx::WeightedInvertedFile{IntVec,RealVec}) where {IntVec,RealVec}
+function sparse(idx::WeightedInvertedFile)
     n = length(idx)
-    I = eltype(IntVec)[]
-    J = eltype(IntVec)[]
-    F = eltype(RealVec)[]
+    I = eltype(idx.lists[1])[]
+    J = eltype(idx.lists[1])[]
+    F = eltype(idx.weights[1])[]
     sizehint!(I, n)
     sizehint!(J, n)
     sizehint!(F, n)

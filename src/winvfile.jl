@@ -15,21 +15,26 @@ This index is optimized to efficiently solve `k` nearest neighbors (cosine dista
 - `sizes`: number of non-zero values in each element (non-zero values in columns)
 - `locks`: per-row locks for multithreaded construction
 """
-struct WeightedInvertedFile{IntListType<:AbstractVector{<:Integer},RealListType<:AbstractVector{<:Real}} <: AbstractInvertedFile
-    lists::Vector{IntListType}  ## posting lists
-    weights::Vector{RealListType}  ## associated weights
+struct WeightedInvertedFile <: AbstractInvertedFile
+    lists::Vector{Vector{UInt32}}  ## posting lists
+    weights::Vector{Vector{Float32}}  ## associated weights
     sizes::Vector{Int32}  ## number of non zero elements per vector
     locks::Vector{SpinLock}
 end
 
 """
-    WeightedInvertedFile(vocsize::Integer, ::Type{IntType}=Int32, ::Type{RealType}=Float32)
+    WeightedInvertedFile(vocsize::Integer)
 
-Convenient function to create an empty `WeightedInvertedFile` with the given vocabulary size. It is possible to specify the type of the identifiers and weights.
+Convenient function to create an empty `WeightedInvertedFile` with the given vocabulary size.
 """
-function WeightedInvertedFile(vocsize::Integer, ::Type{IntType}=Int32, ::Type{RealType}=Float32) where {IntType<:Integer,RealType<:Real}
+function WeightedInvertedFile(vocsize::Integer)
     vocsize > 0 || throw(ArgumentError("voc must not be empty"))
-    WeightedInvertedFile([IntType[] for i in 1:vocsize], [RealType[] for i in 1:vocsize], Int32[],  [SpinLock() for i in 1:vocsize])
+    WeightedInvertedFile(
+        [Vector{Vector{UInt32}}(undef, 0) for i in 1:vocsize],
+        [Vector{Float32}(undef, 0) for i in 1:vocsize],
+        Vector{UInt32}(undef, 0), 
+        [SpinLock() for i in 1:vocsize]
+    )
 end
 
 function _internal_push!(idx::WeightedInvertedFile, tokenID, objID, weight, sort)

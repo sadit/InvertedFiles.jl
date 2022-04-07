@@ -1,60 +1,33 @@
 # This file is part of InvertedFiles.jl
 
-import SimilaritySearch: search
-export search, prepare_posting_lists_for_querying
-
-"""
-	prepare_posting_lists_for_querying(idx::BinaryInvertedFile, q, Q=nothing, tol=1e-6)
-
-Fetches and prepares the involved posting lists to solve `q`
-"""
-function prepare_posting_lists_for_querying(idx::BinaryInvertedFile, q, Q=nothing, tol=1e-6)
-	if Q === nothing
-		Q = valtype(idx.lists)[]
-	end
-	
-	@inbounds for (tokenID, weight) in sparseiterator(q)
-		weight < tol && continue
-		L = idx.lists[tokenID]
-		if length(L) > 0
-			@inbounds push!(Q, L)
-		end
-	end
-	
-	Q
+function push_posting_list!(Q, idx::BinaryInvertedFile, tokenID, val)
+	@inbounds push!(Q, PostingList(idx.lists[tokenID]))
 end
 
 """
-	search(idx::BinaryInvertedFile, q, res::KnnResult)
-
-Searches the set `q` in `idx` using the query specification of `res` (also put the result on `res`)
-"""
-function search(idx::BinaryInvertedFile, q, res::KnnResult; pools=nothing)
-	Q = prepare_posting_lists_for_querying(idx, q)
-	search(idx, Q) do objID, d
-		push!(res, objID, d)
-	end
-
-    (res=res, cost=0)
-end
-
-"""
-	search(callback::Function, idx::BinaryInvertedFile, Q; pools=nothing)
+	search(callback::Function, idx::BinaryInvertedFile, Q)
 
 Find candidates for solving query `Q` using `idx`. It calls `callback` on each candidate `(objID, dist)`
 
-# Arguments:
+# Arguments
+
 - `callback`: callback function on each candidate
 - `idx`: inverted index
 - `Q`: the set of involved posting lists, see [`prepare_posting_lists_for_querying`](@ref)
-"""
-function search(callback::Function, idx::BinaryInvertedFile, Q; pools=nothing)
-    n = length(Q)
+- `P`: a vector of starting positions in Q (initial state as ones)
 
-	umerge(Q) do L, P, isize
-        @inbounds objID = L[1][P[1]]
-		@inbounds m = idx.sizes[objID]
-        d = set_distance_evaluate(idx.dist, isize, n, m)
+# Keyword arguments
+- `t`: threshold (t=1 union, t > 1 solves the t-threshold problem)
+"""
+function search(callback::Function, idx::BinaryInvertedFile, Q::Vector{PostingList}, P_::Vector{UInt32}; t=1)
+    search(callback, idx.dist, idx, Q, P_, t)
+end
+
+@inline function search(callback::Function, dist, idx::BinaryInvertedFile, Q::Vector{PostingList}, P_::Vector{UInt32}, t)
+    n = length(Q)
+	umerge(Q, P_; t) do L, P, isize
+        @inbounds objID = L[1].I[P[1]]
+        @inbounds d = set_distance_evaluate(dist, isize, n, idx.sizes[objID])
 		callback(objID, d)
 	end
 end

@@ -18,8 +18,53 @@ abstract type AbstractInvertedFile <: AbstractSearchContext end
 Number of indexed elements
 """
 Base.length(idx::AbstractInvertedFile) = length(idx.sizes)
-SimilaritySearch.getpools(::AbstractInvertedFile, results=SimilaritySearch.GlobalKnnResult) = results
+# SimilaritySearch.getpools(::AbstractInvertedFile, results=SimilaritySearch.GlobalKnnResult) = results
 Base.show(io::IO, idx::AbstractInvertedFile) = print(io, "{$(typeof(idx)) vocsize=$(length(idx.lists)), n=$(length(idx))}")
+
+"""
+    struct InvertedFilesCaches
+        Q
+        P
+    end
+    
+Caches used for `BinaryInvertedFile` (one per thread)
+
+# Properties
+- `Q`: posting lists involved in a query
+- `P`: positions for merge algorithms
+"""
+struct InvertedFilesCaches
+    Q::Vector{PostingList}
+    P::Vector{UInt32}
+end
+
+# getknnresult(k::Integer, pools::Vector{InvertedFilesCaches}) = reuse!(pools[Threads.threadid()].R, k)
+
+function getcachepostinglists(pools::Vector{InvertedFilesCaches})
+    Q = pools[Threads.threadid()].Q
+    empty!(Q)
+    Q
+end
+
+function getcachepositions(k::Integer, pools::Vector{InvertedFilesCaches})
+    P = pools[Threads.threadid()].P
+    resize!(P, k)
+    fill!(P, 1)
+    P
+end
+
+const GlobalInvertedFilesCachesPool = Vector{InvertedFilesCaches}(undef, 0)
+
+function __init__()
+    n = Threads.nthreads()
+
+    while length(GlobalInvertedFilesCachesPool) < n
+        push!(GlobalInvertedFilesCachesPool, InvertedFilesCaches(Vector{PostingList}(undef, 10), Vector{UInt32}(undef, 10)))
+    end
+
+end
+
+getpools(invfile::AbstractInvertedFile) = GlobalInvertedFilesCachesPool
 
 """
     sparseiterator(db, i)

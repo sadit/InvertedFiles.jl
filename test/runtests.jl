@@ -105,7 +105,6 @@ end
         @test recallscore(a.res, b.res) == 1.0
         @show recallscore(a.res, b.res)
     end
-
 end
 
 @testset "BinaryInvertedFile" begin
@@ -117,13 +116,16 @@ end
     db = VectorDatabase([sort!(unique(rand(1:vocsize, len))) for i in 1:n])
     queries = VectorDatabase([sort!(unique(rand(1:vocsize, len))) for i in 1:m])
 
-    for dist in [JaccardDistance(), DiceDistance(), CosineDistanceSet(), IntersectionDissimilarity()]
+    #for dist in [JaccardDistance(), DiceDistance(), CosineDistanceSet(), IntersectionDissimilarity()]
+    for dist in [JaccardDistance()]
         S = ExhaustiveSearch(; dist, db)
         gI, gD = searchbatch(S, queries, k)
 
         IF = BinaryInvertedFile(vocsize, dist)
         append!(IF, db)
         iI, iD = searchbatch(IF, queries, k)
+        @time search(IF, queries[1], SimilaritySearch.getknnresult(k))
+        @time search(IF, queries[2], SimilaritySearch.getknnresult(k))
         
         recall = macrorecall(gI, iI)
         @show dist, recall
