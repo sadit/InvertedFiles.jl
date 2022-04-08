@@ -38,8 +38,6 @@ struct InvertedFilesCaches
     P::Vector{UInt32}
 end
 
-# getknnresult(k::Integer, pools::Vector{InvertedFilesCaches}) = reuse!(pools[Threads.threadid()].R, k)
-
 function getcachepostinglists(pools::Vector{InvertedFilesCaches})
     Q = pools[Threads.threadid()].Q
     empty!(Q)

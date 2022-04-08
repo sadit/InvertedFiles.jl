@@ -2,7 +2,7 @@
 
 module InvertedFiles
     using Intersections
-    import SimilaritySearch: search, getpools, getknnresult
+    import SimilaritySearch: search, getpools
     
     include("dvec.jl")
     include("sortedintset.jl")

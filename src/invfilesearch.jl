@@ -32,8 +32,7 @@ function search(idx::AbstractInvertedFile, q, res::KnnResult; pools=getpools(idx
 	Q = prepare_posting_lists_for_querying(idx, q, pools, tol)
     P = getcachepositions(length(Q), pools)
 
-    cost = 0
-	search(idx, Q, P; t) do objID, d
+    cost = search(idx, Q, P, t) do objID, d
 		push!(res, objID, d)
 	end
 

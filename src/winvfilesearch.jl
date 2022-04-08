@@ -16,7 +16,7 @@ Find candidates for solving query `Q` using `idx`. It calls `callback` on each c
 - `Q`: the set of involved posting lists, see [`prepare_posting_lists_for_querying`](@ref)
 - `P`: a vector of starting positions in Q (initial state as ones)
 """
-function search(callback::Function, idx::WeightedInvertedFile, Q, P_; t=1)
+function search(callback::Function, idx::WeightedInvertedFile, Q, P_, t)
 	umerge(Q, P_; t) do L, P, m
 		@inbounds w = 1.0 - L[1].val * L[1].W[P[1]]
 		@inbounds objID = L[1].I[P[1]]
