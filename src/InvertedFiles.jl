@@ -4,7 +4,6 @@ module InvertedFiles
     using Intersections
     import SimilaritySearch: search, getpools
     
-    include("dvec.jl")
     include("sortedintset.jl")
     include("plists.jl")
     include("sort.jl")
