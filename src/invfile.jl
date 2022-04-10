@@ -84,7 +84,6 @@ sparseiterator(db::AbstractDatabase, i) = sparseiterator(db[i])
 
 `(id, weight)` iterator for `obj` for generic databases.
 """
-sparseiterator(obj::DVEC) = obj
 sparseiterator(obj::KnnResult) = obj
 sparseiterator(obj::AbstractVector{<:AbstractFloat}) = enumerate(obj)
 sparseiterator(obj::AbstractVector{<:Integer}) = ((u, 1) for u in obj)
