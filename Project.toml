@@ -1,22 +1,32 @@
 name = "InvertedFiles"
 uuid = "b20bd276-2c70-11ec-161a-3d1e1109a1c3"
 authors = ["Eric S. Tellez <donsadit@gmail.com> and contributors"]
-version = "0.2.2"
+version = "0.3.1"
 
 [deps]
 Intersections = "6d0fbc77-481e-44fe-9ace-1653ddcdea34"
+KCenters = "5d8de97f-65f8-4dd6-a15b-0f89c36a43ce"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SimilaritySearch = "053f045d-5466-53fd-b400-a066f88fe02a"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+SearchModels = "0e966ebe-b704-4a65-8279-db954bfe5da0"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 Intersections = "0.2"
+KCenters = "0.6"
+Parameters = "0.12"
+SearchModels = "0.3"
 SimilaritySearch = "0.8.15"
+StatsBase = "0.32, 0.33"
 julia = "1.6"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 
 [targets]
-test = ["Test"]
+test = ["Test", "UnicodePlots"]

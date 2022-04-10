@@ -12,7 +12,9 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "API" => "api.md"
+        "Inv. Files" => "invfile.md",
+        "KnrIndex" => "knr.md",
+        "Sparse" => "sparse.md",
     ],
 )
 

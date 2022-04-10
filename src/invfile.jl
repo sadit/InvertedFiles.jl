@@ -53,7 +53,7 @@ end
 
 const GlobalInvertedFilesCachesPool = Vector{InvertedFilesCaches}(undef, 0)
 
-function __init__()
+function __init__invfile()
     n = Threads.nthreads()
 
     while length(GlobalInvertedFilesCachesPool) < n
