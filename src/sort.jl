@@ -25,6 +25,13 @@ function sortlastpush!(id::AbstractVector)
     nothing
 end
 
+"""
+    sortlastpush!(idlist, dist)
+
+Sorts the last push in place (idlist are keys and dist are its associated values). It implements insertion sort that it is efficient due to the expected
+distribution of the items being inserted (it is expected to be really near of its sorted position).
+
+"""
 function sortlastpush!(id::AbstractVector, dist)
     sp = 1
     pos = N = lastindex(id)

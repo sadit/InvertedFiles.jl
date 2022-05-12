@@ -1,7 +1,7 @@
 # This file is a part of NeighborhoodApproximationIndex.jl
 
 import SimilaritySearch: search, getpools, index!
-using InvertedFiles, Intersections, KCenters, StatsBase, Parameters, LinearAlgebra
+using Dates, InvertedFiles, Intersections, KCenters, StatsBase, Parameters, LinearAlgebra
 export KnrIndex, index!, search, KnrOrderingStrategies, DistanceOrdering, InternalDistanceOrdering, DistanceOnTopKOrdering
 
 mutable struct KnrOpt
