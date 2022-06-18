@@ -2,7 +2,9 @@
 
 module InvertedFiles
     using Intersections
-    import SimilaritySearch: search, getpools
+    import SimilaritySearch: search,  index!, getpools, getknnresult, getminbatch
+    using Base.Threads: SpinLock
+    using Polyester
     
     include("sortedintset.jl")
     include("plists.jl")

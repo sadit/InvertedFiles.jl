@@ -1,7 +1,6 @@
 # This file is part of InvertedFiles.jl
 
 using SimilaritySearch, LinearAlgebra, SparseArrays
-using Base.Threads: SpinLock, @threads
 
 export AbstractInvertedFile
 
@@ -117,33 +116,27 @@ Appends all `db` elements into the index `idx`. It work in parallel using all av
 - `pools`: unused argument but necessary by `searchbatch` (from `SimilaritySearch`)
 - `tol`: controls what is a zero (i.e., weights < tol will be ignored).
 """
-function Base.append!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(db); parallel_block=1000, pools=nothing, tol=1e-6)
-    parallel_block = min(parallel_block, n)
+function Base.append!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(db); minbatch=0, pools=nothing, tol=1e-6)
     startID = length(idx)
-    sp = 1
     resize!(idx.sizes, length(idx) + n)
-    
-    while sp < n
-        ep = min(n, sp + parallel_block)
-        @threads for i in sp:ep
-            objID = i + startID
-            nz = 0
+    minbatch = getminbatch(minbatch, n)
 
-            @inbounds for (tokenID, weight) in sparseiterator(db, i)
-                weight < tol && continue
-                nz += 1
-                try
-                    lock(idx.locks[tokenID])
-                    _internal_push!(idx, tokenID, objID, weight, true)
-                finally
-                    unlock(idx.locks[tokenID])
-                end
+    @batch minbatch=minbatch per=thread for i in 1:n
+        objID = i + startID
+        nz = 0
+
+        @inbounds for (tokenID, weight) in sparseiterator(db, i)
+            weight < tol && continue
+            nz += 1
+            try
+                lock(idx.locks[tokenID])
+                _internal_push!(idx, tokenID, objID, weight, true)
+            finally
+                unlock(idx.locks[tokenID])
             end
-
-            @inbounds idx.sizes[objID] = nz
         end
 
-        sp = ep + 1
+        @inbounds idx.sizes[objID] = nz
     end
 
     idx
@@ -162,14 +155,14 @@ Inserts a single element into the index. This operation is not thread-safe.
 - `pools`: unused argument
 - `tol`: controls what is a zero (i.e., `weight < tol` will be ignored)
 """
-function Base.push!(idx::AbstractInvertedFile, obj; pools=nothing, tol=1e-6)
+function Base.push!(idx::AbstractInvertedFile, obj, objID=length(idx) + 1; pools=nothing, tol=1e-6)
     n = length(idx) + 1
     nz = 0
 
     @inbounds for (tokenID, weight) in sparseiterator(obj)
         weight < tol && continue
         nz += 1
-        _internal_push!(idx, tokenID, n, weight, false)
+        _internal_push!(idx, tokenID, objID, weight, false)
     end
 
     push!(idx.sizes, nz)

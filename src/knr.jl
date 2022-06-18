@@ -1,6 +1,5 @@
 # This file is a part of NeighborhoodApproximationIndex.jl
 
-import SimilaritySearch: search, getpools, index!
 using Dates, InvertedFiles, Intersections, KCenters, StatsBase, Parameters, LinearAlgebra
 export KnrIndex, index!, search, KnrOrderingStrategies, DistanceOrdering, InternalDistanceOrdering, DistanceOnTopKOrdering
 
@@ -160,7 +159,7 @@ Indexes all non indexed items in the database
 - `verbose`: controls verbosity of the procedure
 
 """
-function index!(idx::KnrIndex; parallel_block=get_parallel_block(length(idx.db)), pools=nothing, verbose=true)
+function index!(idx::KnrIndex; parallel_block=get_parallel_block(length(idx.db)), minbatch=0, pools=nothing, verbose=true)
     sp = length(idx) + 1
     n = length(idx.db)
     E = [KnnResult(idx.kbuild) for _ in 1:parallel_block]
@@ -168,14 +167,12 @@ function index!(idx::KnrIndex; parallel_block=get_parallel_block(length(idx.db))
         ep = min(n, sp + parallel_block - 1)
         verbose && println(stderr, "$(typeof(idx)) appending chunk ", (sp=sp, ep=ep, n=n), " ", Dates.now())
     
-        Threads.@threads for i in sp:ep
-            begin
-                res = reuse!(E[i - sp + 1], idx.kbuild)
-                search(idx.centers, idx[i], res)
-            end
+        @batch minbatch=getminbatch(minbatch, ep-sp+1) per=thread for i in sp:ep
+            res = reuse!(E[i - sp + 1], idx.kbuild)
+            search(idx.centers, idx[i], res)
         end
 
-        append!(idx.invfile, VectorDatabase(E), ep-sp+1; parallel_block)
+        append!(idx.invfile, VectorDatabase(E), ep-sp+1; minbatch)
         sp = ep + 1
     end
 end
