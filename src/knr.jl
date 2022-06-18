@@ -38,7 +38,7 @@ mutable struct DistanceOnTopKOrdering <: KnrOrderingStrategy
 end
 
 """
-    struct KnrIndex <: AbstractSearchContext
+    struct KnrIndex <: AbstractSearchIndex
 
 The K nearest references inverted index
 
@@ -55,10 +55,10 @@ The K nearest references inverted index
 struct KnrIndex{
             DistType<:SemiMetric,
             DataType<:AbstractDatabase,
-            CentersIndex<:AbstractSearchContext,
+            CentersIndex<:AbstractSearchIndex,
             InvIndexType<:AbstractInvertedFile,
             OrderingType<:KnrOrderingStrategy
-        } <: AbstractSearchContext
+        } <: AbstractSearchIndex
     dist::DistType
     db::DataType
     centers::CentersIndex
@@ -247,7 +247,7 @@ function KnrIndex(
             0 < centersrecall < 1 || throw(ArgumentError("the expected recall for centers index should be 0 < centersrecall < 0"))
             centers = SearchGraph(; db=refs, dist, verbose)
             index!(centers; parallel_block)
-            optimize!(centers, OptimizeParameters(kind=MinRecall(centersrecall)))
+            optimize!(centers, MinRecall(centersrecall))
         end
     end
     

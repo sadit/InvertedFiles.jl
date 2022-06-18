@@ -6,11 +6,11 @@ using Base.Threads: SpinLock, @threads
 export AbstractInvertedFile
 
 """
-    abstract type AbstractInvertedFile <: AbstractSearchContext end
+    abstract type AbstractInvertedFile <: AbstractSearchIndex end
 
 Abstract inverted file, actual data structures are [`WeightedInvertedFile`](@ref) and [`BinaryInvertedFile`](@ref)
 """
-abstract type AbstractInvertedFile <: AbstractSearchContext end
+abstract type AbstractInvertedFile <: AbstractSearchIndex end
 
 """
     length(idx::AbstractInvertedFile)

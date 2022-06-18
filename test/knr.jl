@@ -12,27 +12,27 @@ function runtest(; dim, n, m,
     dist = SqL2Distance()
     seq = ExhaustiveSearch(dist, X)
     @info "creating gold standard"
-    @time Igold, Dgold, gsearchtime = timedsearchbatch(seq, Q, k; parallel=true)
+    gsearchtime = @elapsed Igold, Dgold = searchbatch(seq, Q, k)
     @info "creating the KnrIndex"
     indextime = @elapsed index = KnrIndex(dist, X; kbuild, ksearch, parallel_block, centersrecall, initial, maxiters, ordering)
     @test length(index) == length(X)
     @info "searching in the index"
     @show dim, n, m , numcenters, k, centersrecall, ordering
-    @time Ires, Dres, tsearchtime = timedsearchbatch(index, Q, k; parallel=true)
+    tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "before optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), index-construction: $indextime"
     
     @info "**** optimizing ParetoRadius() ****"
     opttime = @elapsed optimize!(index, ParetoRadius(); verbose=false)
-    @time Ires, Dres, tsearchtime = timedsearchbatch(index, Q, k; parallel=true)
+    tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), optimization-time: $opttime"
     
     @info "**** optimizing ParetoRecall() ****"
     opttime = @elapsed optimize!(index, ParetoRecall(); verbose=false)
-    @time Ires, Dres, tsearchtime = timedsearchbatch(index, Q, k; parallel=true)
+    tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), optimization-time: $opttime"
@@ -40,7 +40,7 @@ function runtest(; dim, n, m,
 
     @info "**** optimizing MinRecall(0.95) ****"
     opttime = @elapsed optimize!(index, MinRecall(0.95); verbose=false)
-    @time Ires, Dres, tsearchtime = timedsearchbatch(index, Q, k; parallel=true)
+    tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), optimization-time: $opttime"
@@ -62,7 +62,7 @@ function runtest(; dim, n, m,
     G.neighborhood.reduce = IdentityNeighborhood()
     index!(G, parallel_block=1000)
     opttime = @elapsed optimize!(G, MinRecall(0.95); verbose=true)
-    @time Ires, Dres, tsearchtime = timedsearchbatch(G, Q, k; parallel=true)
+    @time Ires, Dres, tsearchtime = timedsearchbatch(G, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(G)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime * m), G: $(tsearchtime * m), optimization-time: $opttime"
