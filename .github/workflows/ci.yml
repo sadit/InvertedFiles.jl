@@ -19,7 +19,6 @@ jobs:
         version:
           - '1.7'
           - '1.6'
-          - 'nightly'
         os:
           - ubuntu-latest
           - macOS-latest
