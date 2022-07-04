@@ -127,6 +127,7 @@ function Base.append!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(
 
         @inbounds for (tokenID, weight) in sparseiterator(db, i)
             weight < tol && continue
+            tokenID == 0 && continue # tokenID == 0 is allowed as centinel (useful for plain distance evaluation of cosine)
             nz += 1
             try
                 lock(idx.locks[tokenID])

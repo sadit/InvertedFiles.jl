@@ -5,7 +5,6 @@ using Test
 using Random
 Random.seed!(0)
 
-
 @testset "WeightedInvertedFile" begin
     A = [normalize!(rand(300)) for i in 1:1000]
     B = VectorDatabase([Dict(enumerate(a)) for a in A])
