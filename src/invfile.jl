@@ -129,8 +129,8 @@ function Base.append!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(
             weight < tol && continue
             tokenID == 0 && continue # tokenID == 0 is allowed as centinel (useful for plain distance evaluation of cosine)
             nz += 1
+            lock(idx.locks[tokenID])
             try
-                lock(idx.locks[tokenID])
                 _internal_push!(idx, tokenID, objID, weight, true)
             finally
                 unlock(idx.locks[tokenID])

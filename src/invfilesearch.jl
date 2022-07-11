@@ -14,6 +14,7 @@ function prepare_posting_lists_for_querying(idx::AbstractInvertedFile, q, pools=
 	
 	@inbounds for (tokenID, val) in sparseiterator(q)
 		val < tol && continue
+		tokenID == 0 && continue
 		L = idx.lists[tokenID]
 		if length(L) > 0
             push_posting_list!(Q, idx, tokenID, val)
@@ -30,6 +31,8 @@ Searches `q` in `idx` using the cosine dissimilarity, it computes the full opera
 """
 function search(idx::AbstractInvertedFile, q, res::KnnResult; pools=getpools(idx), tol=1e-6, t=1)
 	Q = prepare_posting_lists_for_querying(idx, q, pools, tol)
+	length(Q) == 0 && return (res=res, cost=0)
+	
     P = getcachepositions(length(Q), pools)
 
     cost = search(idx, Q, P, t) do objID, d

@@ -30,8 +30,8 @@ Convenient function to create an empty `WeightedInvertedFile` with the given voc
 function WeightedInvertedFile(vocsize::Integer)
     vocsize > 0 || throw(ArgumentError("voc must not be empty"))
     WeightedInvertedFile(
-        [Vector{Vector{UInt32}}(undef, 0) for i in 1:vocsize],
-        [Vector{Float32}(undef, 0) for i in 1:vocsize],
+        [Int32[] for i in 1:vocsize],
+        [Float32[] for i in 1:vocsize],
         Vector{UInt32}(undef, 0), 
         [SpinLock() for i in 1:vocsize]
     )
