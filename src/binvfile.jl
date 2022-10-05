@@ -15,8 +15,12 @@ Creates a binary weighted inverted index. An inverted index is an sparse matrix 
 - `sizes`: number of non-zero values per object (number of non-zero values per column)
 - `locks`: Per row locks for multithreaded construction
 """
-struct BinaryInvertedFile <: AbstractInvertedFile
-    dist::Union{IntersectionDissimilarity,DiceDistance,JaccardDistance,CosineDistanceSet}
+struct BinaryInvertedFile{
+            DistType<:Union{IntersectionDissimilarity,DiceDistance,JaccardDistance,CosineDistanceSet},
+            DbType<:Union{<:AbstractDatabase,Nothing}
+        } <: AbstractInvertedFile
+    dist::DistType
+    db::DbType
     lists::Vector{Vector{UInt32}}
     sizes::Vector{UInt32}
     locks::Vector{SpinLock}
@@ -41,9 +45,9 @@ Creates an `BinaryInvertedFile` with the given vocabulary size and for the given
 - `vocsize`: the vocabulary size of the index
 - `dist`: the distance function to be used in searches
 """
-function BinaryInvertedFile(vocsize::Integer, dist=JaccardDistance())
+function BinaryInvertedFile(vocsize::Integer, dist=JaccardDistance(), db=nothing)
     vocsize > 0 || throw(ArgumentError("voc must not be empty"))
-    BinaryInvertedFile(dist, [UInt32[] for _ in 1:vocsize], UInt32[],  [SpinLock() for i in 1:vocsize])
+    BinaryInvertedFile(dist, db, [UInt32[] for _ in 1:vocsize], UInt32[],  [SpinLock() for i in 1:vocsize])
 end
 
 function _internal_push!(idx::BinaryInvertedFile, tokenID, objID, _, sort)

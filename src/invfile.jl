@@ -19,6 +19,7 @@ Number of indexed elements
 Base.length(idx::AbstractInvertedFile) = length(idx.sizes)
 # SimilaritySearch.getpools(::AbstractInvertedFile, results=SimilaritySearch.GlobalKnnResult) = results
 Base.show(io::IO, idx::AbstractInvertedFile) = print(io, "{$(typeof(idx)) vocsize=$(length(idx.lists)), n=$(length(idx))}")
+SimilaritySearch.database(idx::AbstractInvertedFile) = idx.db
 
 """
     struct InvertedFilesCaches
@@ -58,7 +59,6 @@ function __init__invfile()
     while length(GlobalInvertedFilesCachesPool) < n
         push!(GlobalInvertedFilesCachesPool, InvertedFilesCaches(Vector{PostingList}(undef, 10), Vector{UInt32}(undef, 10)))
     end
-
 end
 
 getpools(invfile::AbstractInvertedFile) = GlobalInvertedFilesCachesPool
@@ -100,25 +100,8 @@ convertpair(u::Tuple) = u # assert length(u) = 2
 convertpair(u::Vector) = u # assert length(u) = 2
 convertpair(u::Pair) = u
 
-"""
-    Base.append!(idx, db; parallel_block=1000, pools=nothing, tol=1e-6)
-
-Appends all `db` elements into the index `idx`. It work in parallel using all available threads.
-
-# Arguments:
-- `idx`: The inverted index
-- `db`: The database of sparse objects, it can be only indices if each object is a list of integers or a set of integers (useful for `BinaryInvertedFile`),
-    sparse matrices, dense matrices, among other combinations.
-- `n`: The number of items to insert (defaults to all)
-
-# Keyword arguments:
-- `parallel_block`: inserts `parallel_block` elements in parallel, this argument must be larger than `Threads.nthreads()` but also not so large since the algorithm take advantage of small `parallel_block`.
-- `pools`: unused argument but necessary by `searchbatch` (from `SimilaritySearch`)
-- `tol`: controls what is a zero (i.e., weights < tol will be ignored).
-"""
-function Base.append!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(db); minbatch=0, pools=nothing, tol=1e-6)
-    startID = length(idx)
-    resize!(idx.sizes, length(idx) + n)
+function parallel_append!(idx, db, startID, n, minbatch, tol)
+    resize!(idx.sizes, startID + n)
     minbatch = getminbatch(minbatch, n)
 
     @batch minbatch=minbatch per=thread for i in 1:n
@@ -141,6 +124,38 @@ function Base.append!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(
     end
 
     idx
+end
+
+function SimilaritySearch.index!(idx::AbstractInvertedFile; minbatch=0, pools=nothing, tol=1e-6)
+    startID = length(idx)
+    db = database(idx)
+    n = length(db) - startID
+    n == 0 && return idx
+    parallel_append!(idx, db, startID, n, minbatch, tol)
+end
+
+"""
+    Base.append!(idx, db; minbatch=1000, pools=nothing, tol=1e-6)
+
+Appends all `db` elements into the index `idx`. It work in parallel using all available threads.
+
+# Arguments:
+- `idx`: The inverted index
+- `db`: The database of sparse objects, it can be only indices if each object is a list of integers or a set of integers (useful for `BinaryInvertedFile`),
+    sparse matrices, dense matrices, among other combinations.
+- `n`: The number of items to insert (defaults to all)
+
+# Keyword arguments:
+- `minbatch`: how many elements are inserted per available thread.
+- `pools`: unused argument but necessary by `searchbatch` (from `SimilaritySearch`)
+- `tol`: controls what is a zero (i.e., weights < tol will be ignored).
+"""
+function Base.append!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(db); minbatch=0, pools=nothing, tol=1e-6)
+    startID = length(idx)
+    resize!(idx.sizes, startID + n)
+    !isnothing(idx.db) && append!(idx.db, db)
+
+    parallel_append!(idx, db, startID, n, minbatch, tol)
 end
 
 """
@@ -167,5 +182,6 @@ function Base.push!(idx::AbstractInvertedFile, obj, objID=length(idx) + 1; pools
     end
 
     push!(idx.sizes, nz)
+    !isnothing(idx.db) && push!(idx.db, obj)
     idx
 end

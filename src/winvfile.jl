@@ -15,7 +15,8 @@ This index is optimized to efficiently solve `k` nearest neighbors (cosine dista
 - `sizes`: number of non-zero values in each element (non-zero values in columns)
 - `locks`: per-row locks for multithreaded construction
 """
-struct WeightedInvertedFile <: AbstractInvertedFile
+struct WeightedInvertedFile{DbType<:Union{<:AbstractDatabase,Nothing}} <: AbstractInvertedFile
+    db::DbType
     lists::Vector{Vector{UInt32}}  ## posting lists
     weights::Vector{Vector{Float32}}  ## associated weights
     sizes::Vector{Int32}  ## number of non zero elements per vector
@@ -27,12 +28,13 @@ end
 
 Convenient function to create an empty `WeightedInvertedFile` with the given vocabulary size.
 """
-function WeightedInvertedFile(vocsize::Integer)
+function WeightedInvertedFile(vocsize::Integer, db=nothing)
     vocsize > 0 || throw(ArgumentError("voc must not be empty"))
     WeightedInvertedFile(
-        [Int32[] for i in 1:vocsize],
+        db,
+        [UInt32[] for i in 1:vocsize],
         [Float32[] for i in 1:vocsize],
-        Vector{UInt32}(undef, 0), 
+        Vector{Int32}(undef, 0), 
         [SpinLock() for i in 1:vocsize]
     )
 end

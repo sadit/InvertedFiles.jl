@@ -6,11 +6,11 @@ using Random
 Random.seed!(0)
 
 @testset "WeightedInvertedFile" begin
-    A = [normalize!(rand(300)) for i in 1:1000]
+    A = MatrixDatabase(normalize!(rand(300, 1000)))
     B = VectorDatabase([Dict(enumerate(a)) for a in A])
 
     # testing with Vector container (map=nothing)
-    I = append!(WeightedInvertedFile(300), B)
+    I = index!(WeightedInvertedFile(300, B))
 
     k = 30
     for i in 1:10
@@ -21,7 +21,7 @@ Random.seed!(0)
     end
 
     # testing with Dict container (map != nothing)
-    I = append!(WeightedInvertedFile(300), B)
+    I = index!(WeightedInvertedFile(300, B))
 
     k = 30
     for i in 1:10
@@ -33,10 +33,9 @@ Random.seed!(0)
 
     k = 30
     for i in 1:10
-        @info i
         qid = rand(1:length(A))
-        @time a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), A[qid], KnnResult(k))
-        @time b = search(I, B[qid], KnnResult(k))
+        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), A[qid], KnnResult(k))
+        b = search(I, B[qid], KnnResult(k))
         @test recallscore(a.res, b.res) == 1.0
     end
 
@@ -56,14 +55,31 @@ Random.seed!(0)
     B = VectorDatabase(A)
     I = append!(WeightedInvertedFile(300), B)
     k = 1  # the aggresive cut of the attributes need a small k
+    @test length(I) == length(B)
     for i in 1:10
-        @info i
+        #@info i
         qid = rand(1:length(A))
-        @time a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), A[qid], KnnResult(k))
-        @time b = search(I, B[qid], KnnResult(k))
+        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), A[qid], KnnResult(k))
+        b = search(I, B[qid], KnnResult(k))
         @test recallscore(a.res, b.res) == 1.0
-        @show recallscore(a.res, b.res)
+        #@show recallscore(a.res, b.res)
     end
+
+    I = WeightedInvertedFile(300, B)
+    @test length(I) == 0
+    index!(I)
+    @test length(I) == length(B)
+    k = 1  # the aggresive cut of the attributes need a small k
+    for i in 1:10
+        # @info i
+        qid = rand(1:length(A))
+        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), A[qid], KnnResult(k))
+        b = search(I, B[qid], KnnResult(k))
+        @test recallscore(a.res, b.res) == 1.0
+        #@show recallscore(a.res, b.res)
+    end
+
+    @test 1.0 == macrorecall(allknn(ExhaustiveSearch(dist=NormalizedCosineDistance(), db=I.db), 3)[1], allknn(I, 3)[1])
 end
 
 @testset "BinaryInvertedFile" begin
