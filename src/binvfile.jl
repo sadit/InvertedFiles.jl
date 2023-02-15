@@ -26,6 +26,27 @@ struct BinaryInvertedFile{
     locks::Vector{SpinLock}
 end
 
+BinaryInvertedFile(invfile::BinaryInvertedFile;
+    dist=invfile.dist,
+    db=invfile.db,
+    lists=invfile.lists,
+    sizes=invfile.sizes,
+    locks=invfile.locks
+) = BinaryInvertedFile(dist, db, lists, sizes, locks)
+
+SimilaritySearch.distance(idx::BinaryInvertedFile) = idx.dist
+
+function SimilaritySearch.saveindex(filename::AbstractString, index::InvFileType, meta::Dict) where {InvFileType<:AbstractInvertedFile}
+    lists = SimilaritySearch.flat_adjlist(UInt32, index.lists)
+    index = InvFileType(index; lists=Vector{UInt32}[])
+    jldsave(filename; index, meta, lists)
+end
+
+function restoreindex(index::InvFileType, meta::Dict, f) where {InvFileType<:AbstractInvertedFile}
+    lists = unflat_adjlist(UInt32, f["lists"])
+    copy(index; lists), meta
+end
+
 """
     set_distance_evaluate(dist::SemiMetric, intersection::Integer, size1::Integer, size2::Integer)
 
@@ -50,7 +71,7 @@ function BinaryInvertedFile(vocsize::Integer, dist=JaccardDistance(), db=nothing
     BinaryInvertedFile(dist, db, [UInt32[] for _ in 1:vocsize], UInt32[],  [SpinLock() for i in 1:vocsize])
 end
 
-function _internal_push!(idx::BinaryInvertedFile, tokenID, objID, _, sort)
+function internal_push!(idx::BinaryInvertedFile, tokenID, objID, _, sort)
     @inbounds L = idx.lists[tokenID]
     push!(L, objID)
     sort && sortlastpush!(L)

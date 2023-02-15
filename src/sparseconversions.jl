@@ -38,7 +38,6 @@ function sparse(idx::BinaryInvertedFile, one::Type{RealType}=1f0) where {RealTyp
     sparse(I, J, F, length(idx.lists), n)
 end
 
-
 """
     sparse(idx::WeightedInvertedFile) 
  

@@ -53,7 +53,7 @@ Random.seed!(0)
 
     #B = VectorDatabase([create_sparse(A_) for A_ in A])
     B = VectorDatabase(A)
-    I = append!(WeightedInvertedFile(300), B)
+    I = append_items!(WeightedInvertedFile(300), B)
     k = 1  # the aggresive cut of the attributes need a small k
     @test length(I) == length(B)
     for i in 1:10
@@ -97,7 +97,7 @@ end
         gI, gD = searchbatch(S, queries, k)
 
         IF = BinaryInvertedFile(vocsize, dist)
-        append!(IF, db)
+        append_items!(IF, db)
         iI, iD = searchbatch(IF, queries, k)
         @time search(IF, queries[1], SimilaritySearch.getknnresult(k))
         @time search(IF, queries[2], SimilaritySearch.getknnresult(k))

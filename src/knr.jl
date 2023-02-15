@@ -101,14 +101,14 @@ function getencodeknnresult(k::Integer, pools::Vector{KnrCaches})
 end
 
 """
-    push!(idx::KnrIndex, obj; pools=getpools(idx), encpools=getpools(idx.centers))
+    push_item!(idx::KnrIndex, obj; pools=getpools(idx), encpools=getpools(idx.centers))
 
 Inserts `obj` into the indexed
 """
-function Base.push!(idx::KnrIndex, obj; pools=getpools(idx), encpools=getpools(idx.centers))
+function SimilaritySearch.push_item!(idx::KnrIndex, obj; pools=getpools(idx), encpools=getpools(idx.centers))
     res = getencodeknnresult(idx.kbuild, pools)
     search(idx.centers, obj, res; pools=encpools)
-    push!(idx.invfile, res)
+    push_item!(idx.invfile, res)
     idx
 end
 
@@ -120,7 +120,7 @@ An heuristic to compute the `parallel_block` with respect with the number of ele
 get_parallel_block(n) = min(n, 8 * Threads.nthreads())
 
 """
-    append!(idx::KnrIndex, db; <kwargs>)
+    append_items!(idx::KnrIndex, db; <kwargs>)
 
 
 Appends all items in the database `db` into the index
@@ -134,13 +134,13 @@ Appends all items in the database `db` into the index
 - `pools`: unused argument
 - `verbose`: controls the verbosity of the procedure
 """
-function Base.append!(idx::KnrIndex, db;
+function SimilaritySearch.append_items!(idx::KnrIndex, db;
         parallel_block=get_parallel_block(length(db)),
         pools=getpools(idx),
         verbose=true
     )
 
-    append!(idx.db, db)
+    append_items!(idx.db, db)
     index!(idx; parallel_block, pools, verbose)
 end
 
@@ -172,9 +172,11 @@ function index!(idx::KnrIndex; parallel_block=get_parallel_block(length(idx.db))
             search(idx.centers, idx[i], res)
         end
 
-        append!(idx.invfile, VectorDatabase(E), ep-sp+1; minbatch)
+        append_items!(idx.invfile, VectorDatabase(E), ep-sp+1; minbatch)
         sp = ep + 1
     end
+
+    idx
 end
 
 """
@@ -252,5 +254,4 @@ function KnrIndex(
     idx = KnrIndex(dist, db, centers, invfile, kbuild, ordering, KnrOpt(ksearch))
     pools = pools === nothing ? getpools(idx) : pools
     index!(idx; parallel_block, pools, verbose)
-    idx
 end

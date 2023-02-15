@@ -20,29 +20,29 @@ function search_(idx::KnrIndex, q, _, Q, P_, res::KnnResult, ::DistanceOrdering)
     dist = idx.dist
     cost = umerge(Q, P_) do L, P, _
         @inbounds objID = L[1].I[P[1]]
-        @inbounds push!(res, objID, evaluate(dist, q, idx[objID]))
+        @inbounds push_item!(res, objID, evaluate(dist, q, idx[objID]))
     end
 
-    (res=res, cost=cost)
+    SearchResult(res, cost)
 end
 
 function search_(idx::KnrIndex, q, enc, Q, P_, res::KnnResult, ordering::DistanceOnTopKOrdering)
     enc = reuse!(enc, ordering.top)
     search(idx.invfile, Q, P_, 1) do objID, d
-        @inbounds push!(enc, objID, d)
+        @inbounds push_item!(enc, objID, d)
     end
 
     for objID in idview(enc)
-        @inbounds push!(res, objID, evaluate(idx.dist, q, idx[objID]))
+        @inbounds push_item!(res, objID, evaluate(idx.dist, q, idx[objID]))
     end
 
-    (res=res, cost=length(enc))
+    SearchResult(res, length(enc))
 end
 
 function search_(idx::KnrIndex, q, _, Q, P_, res::KnnResult, ::InternalDistanceOrdering)
     cost = search(idx.invfile, Q, P_, 1) do objID, d
-        @inbounds push!(res, objID, d)
+        @inbounds push_item!(res, objID, d)
     end
 
-    (res=res, cost=cost)
+    SearchResult(res, cost)
 end

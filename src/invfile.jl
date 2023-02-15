@@ -27,7 +27,7 @@ SimilaritySearch.database(idx::AbstractInvertedFile) = idx.db
         P
     end
     
-Caches used for `BinaryInvertedFile` (one per thread)
+Caches used for solving queries with inverted files (one per thread)
 
 # Properties
 - `Q`: posting lists involved in a query
@@ -101,29 +101,39 @@ convertpair(u::Vector) = u # assert length(u) = 2
 convertpair(u::Pair) = u
 
 function parallel_append!(idx, db, startID, n, minbatch, tol)
-    resize!(idx.sizes, startID + n)
+    internal_parallel_prepare_append!(idx, startID + n)
     minbatch = getminbatch(minbatch, n)
 
     @batch minbatch=minbatch per=thread for i in 1:n
         objID = i + startID
         nz = 0
+        sumw = 0.0
 
         @inbounds for (tokenID, weight) in sparseiterator(db, i)
             weight < tol && continue
             tokenID == 0 && continue # tokenID == 0 is allowed as centinel (useful for plain distance evaluation of cosine)
             nz += 1
+            sumw += weight
             lock(idx.locks[tokenID])
             try
-                _internal_push!(idx, tokenID, objID, weight, true)
+                internal_push!(idx, tokenID, objID, weight, true)
             finally
                 unlock(idx.locks[tokenID])
             end
         end
 
-        @inbounds idx.sizes[objID] = nz
+        internal_parallel_finish_append_object!(idx, objID, nz, sumw)
     end
 
     idx
+end
+
+function internal_parallel_prepare_append!(idx::AbstractInvertedFile, new_size::Integer)
+    resize!(idx.sizes, new_size)
+end
+
+function internal_parallel_finish_append_object!(idx::AbstractInvertedFile, objID::Integer, nz::Integer, sumw)
+    idx.sizes[objID] = nz
 end
 
 function SimilaritySearch.index!(idx::AbstractInvertedFile; minbatch=0, pools=nothing, tol=1e-6)
@@ -135,7 +145,7 @@ function SimilaritySearch.index!(idx::AbstractInvertedFile; minbatch=0, pools=no
 end
 
 """
-    Base.append!(idx, db; minbatch=1000, pools=nothing, tol=1e-6)
+    append_items!(idx, db; minbatch=1000, pools=nothing, tol=1e-6)
 
 Appends all `db` elements into the index `idx`. It work in parallel using all available threads.
 
@@ -150,7 +160,7 @@ Appends all `db` elements into the index `idx`. It work in parallel using all av
 - `pools`: unused argument but necessary by `searchbatch` (from `SimilaritySearch`)
 - `tol`: controls what is a zero (i.e., weights < tol will be ignored).
 """
-function Base.append!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(db); minbatch=0, pools=nothing, tol=1e-6)
+function SimilaritySearch.append_items!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(db); minbatch=0, pools=nothing, tol=1e-6)
     startID = length(idx)
     resize!(idx.sizes, startID + n)
     !isnothing(idx.db) && append!(idx.db, db)
@@ -159,7 +169,7 @@ function Base.append!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(
 end
 
 """
-    push!(idx::AbstractInvertedFile, obj; pools=nothing, tol=1e-6)
+    push_item!(idx::AbstractInvertedFile, obj; pools=nothing, tol=1e-6)
 
 Inserts a single element into the index. This operation is not thread-safe.
 
@@ -171,17 +181,23 @@ Inserts a single element into the index. This operation is not thread-safe.
 - `pools`: unused argument
 - `tol`: controls what is a zero (i.e., `weight < tol` will be ignored)
 """
-function Base.push!(idx::AbstractInvertedFile, obj, objID=length(idx) + 1; pools=nothing, tol=1e-6)
-    n = length(idx) + 1
-    nz = 0
-
-    @inbounds for (tokenID, weight) in sparseiterator(obj)
-        weight < tol && continue
-        nz += 1
-        _internal_push!(idx, tokenID, objID, weight, false)
-    end
-
+function SimilaritySearch.push_item!(idx::AbstractInvertedFile, obj, objID=length(idx) + 1; pools=nothing, tol=1e-6)
+    # n = length(idx) + 1
+    nz = internal_push_object!(idx, objID, obj, tol)
     push!(idx.sizes, nz)
     !isnothing(idx.db) && push!(idx.db, obj)
     idx
 end
+
+function internal_push_object!(idx::AbstractInvertedFile, objID::Integer, obj, tol::Float64)
+    nz = 0
+    @inbounds for (tokenID, weight) in sparseiterator(obj)
+        weight < tol && continue
+        tokenID == 0 && continue  # object 0 is a centinel
+        nz += 1
+        internal_push!(idx, tokenID, objID, weight, false)
+    end
+
+    nz
+end
+

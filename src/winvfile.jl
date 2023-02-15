@@ -23,6 +23,29 @@ struct WeightedInvertedFile{DbType<:Union{<:AbstractDatabase,Nothing}} <: Abstra
     locks::Vector{SpinLock}
 end
 
+SimilaritySearch.distance(idx::WeightedInvertedFile) = NormalizedCosineDistance()
+
+function SimilaritySearch.saveindex(filename::AbstractString, index::InvFileType, meta::Dict) where {InvFileType<:AbstractInvertedFile}
+    lists = SimilaritySearch.flat_adjlist(UInt32, index.lists)
+    weights = SimilaritySearch.flat_adjlist(UInt32, index.weights)
+    index = InvFileType(index; lists=Vector{UInt32}[], weights=Vector{Float32}[])
+    jldsave(filename; index, meta, lists, weights)
+end
+
+function restoreindex(index::InvFileType, meta::Dict, f) where {InvFileType<:AbstractInvertedFile}
+    lists = unflat_adjlist(UInt32, f["lists"])
+    weights = unflat_adjlist(UInt32, f["weights"])
+    copy(index; lists, weights), meta
+end
+
+WeightedInvertedFile(invfile::WeightedInvertedFile;
+    db=invfile.db,
+    lists=invfile.lists,
+    weights=invfile.weights,
+    sizes=invfile.sizes,
+    locks=invfile.locks
+) = WeightedInvertedFile(db, lists, weights, sizes, locks)
+
 """
     WeightedInvertedFile(vocsize::Integer)
 
@@ -39,7 +62,7 @@ function WeightedInvertedFile(vocsize::Integer, db=nothing)
     )
 end
 
-function _internal_push!(idx::WeightedInvertedFile, tokenID, objID, weight, sort)
+function internal_push!(idx::WeightedInvertedFile, tokenID, objID, weight, sort)
     push!(idx.lists[tokenID], objID)
     push!(idx.weights[tokenID], weight)
     sort && sortlastpush!(idx.lists[tokenID], idx.weights[tokenID])
