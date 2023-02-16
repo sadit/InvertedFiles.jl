@@ -13,13 +13,6 @@ struct PostingList{EndPointType}
     weight::Float32  # useful for search time and saving global data
 end
 
-"""
-    PostingList(I)
-
-Creates a posting lists with an empty array of weights
-"""
-PostingList(I) = PostingList(I, 0, 1f0)
-
 @inline Base.length(plist::PostingList) = length(plist.list)
 @inline _get_key(plist::PostingList{T}, i) where {T<:Number} = @inbounds plist.list[i]
 @inline _get_key(plist::PostingList{WeightedEndPoint}, i) = @inbounds plist.list[i].id

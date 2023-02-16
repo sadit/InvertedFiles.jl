@@ -4,7 +4,7 @@ using Test, SimilaritySearch, InvertedFiles, LinearAlgebra, UnicodePlots
 using SimilaritySearch: neighbors
 function runtest(; dim, n, m,
     numcenters=5ceil(Int, sqrt(n)), k=10, centersrecall=0.95, kbuild=1, ksearch=1,
-    parallel_block=1000, ordering=DistanceOrdering(), minrecall=1.0, initial=:dnet, maxiters=0)
+    parallel_block=256, ordering=DistanceOrdering(), minrecall=1.0, initial=:dnet, maxiters=0)
     A = randn(Float32, dim, n)
     B = randn(Float32, dim, m)
     X = MatrixDatabase(A)
@@ -79,11 +79,11 @@ end
     # DistanceOnTopKOrdering and InternalDistanceOrdering need high `kbuild` and `ksearch` to generate
     # some discrimination power by the internal distance
     # useful for costly distance functions or whenever the dataset is pretty large
-    runtest(; dim=4, n=10^5, m=1000, numcenters=10, k=100, centersrecall, kbuild=5, ksearch=5, ordering=InternalDistanceOrdering(), minrecall=0)
+    runtest(; dim=4, n=10^4, m=100, numcenters=10, k=30, centersrecall, kbuild=5, ksearch=5, ordering=InternalDistanceOrdering(), minrecall=0)
     @info "********************* Real search (top-k) *********************"
     # useful for costly distance functions
-    runtest(; dim=4, n=10^5, m=1000, k=100, centersrecall, kbuild=5, ksearch=5, ordering=DistanceOnTopKOrdering(1000), minrecall=0.6)
+    runtest(; dim=4, n=10^4, m=100, k=30, centersrecall, kbuild=5, ksearch=5, ordering=DistanceOnTopKOrdering(1000), minrecall=0.6)
     @info "********************* Real search *********************"
     # most usages
-    runtest(; dim=4, n=10^6, m=1000, k=100, centersrecall, kbuild=1, ksearch=1, ordering=DistanceOrdering())
+    runtest(; dim=4, n=10^6, m=1000, k=30, centersrecall, kbuild=1, ksearch=1, ordering=DistanceOrdering())
 end

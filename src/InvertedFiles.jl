@@ -4,11 +4,7 @@ module InvertedFiles
     using Intersections
     import SimilaritySearch:
         search,  index!, getpools, getknnresult, getminbatch
-    using SimilaritySearch:
-        AbstractAdjacencyList, AdjacencyList, WeightedEndPoint, StaticAdjacencyList,
-        add_vertex!, add_edge!, neighbors,
-        IdOrder, WeightOrder, RevWeightOrder
-    
+    using SimilaritySearch.AdjacencyLists
     using Base.Threads: SpinLock
     using Polyester
     
