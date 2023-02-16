@@ -1,7 +1,7 @@
 # This file is a part of NeighborhoodApproximationIndex.jl
 
 using Test, SimilaritySearch, InvertedFiles, LinearAlgebra, UnicodePlots
-
+using SimilaritySearch: neighbors
 function runtest(; dim, n, m,
     numcenters=5ceil(Int, sqrt(n)), k=10, centersrecall=0.95, kbuild=1, ksearch=1,
     parallel_block=1000, ordering=DistanceOrdering(), minrecall=1.0, initial=:dnet, maxiters=0)
@@ -51,7 +51,7 @@ function runtest(; dim, n, m,
     @time search(index, Q[1], res)
     res = reuse!(res)
     @time search(index, Q[2], res)
-    F = sort!(length.(index.invfile.lists), rev=true)
+    F = sort!([length(neighbors(index.invfile.adj, i)) for i in eachindex(index.invfile.adj)], rev=true)
     println(histogram(F, nbins=20))
     println(lineplot(F))
 

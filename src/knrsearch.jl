@@ -19,8 +19,8 @@ end
 function search_(idx::KnrIndex, q, _, Q, P_, res::KnnResult, ::DistanceOrdering)
     dist = idx.dist
     cost = umerge(Q, P_) do L, P, _
-        @inbounds objID = L[1].I[P[1]]
-        @inbounds push_item!(res, objID, evaluate(dist, q, idx[objID]))
+        @inbounds objID = _get_key(L[1].list, P[1])
+        @inbounds push_item!(res, objID, evaluate(dist, q, database(idx, objID)))
     end
 
     SearchResult(res, cost)
@@ -32,8 +32,9 @@ function search_(idx::KnrIndex, q, enc, Q, P_, res::KnnResult, ordering::Distanc
         @inbounds push_item!(enc, objID, d)
     end
 
+    dist = distance(idx)
     for objID in idview(enc)
-        @inbounds push_item!(res, objID, evaluate(idx.dist, q, idx[objID]))
+        @inbounds push_item!(res, objID, evaluate(dist, q, database(idx, objID)))
     end
 
     SearchResult(res, length(enc))

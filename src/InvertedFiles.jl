@@ -2,13 +2,18 @@
 
 module InvertedFiles
     using Intersections
-    import SimilaritySearch: search,  index!, getpools, getknnresult, getminbatch
+    import SimilaritySearch:
+        search,  index!, getpools, getknnresult, getminbatch
+    using SimilaritySearch:
+        AbstractAdjacencyList, AdjacencyList, WeightedEndPoint, StaticAdjacencyList,
+        add_vertex!, add_edge!, neighbors,
+        IdOrder, WeightOrder, RevWeightOrder
+    
     using Base.Threads: SpinLock
     using Polyester
     
     include("sortedintset.jl")
     include("plists.jl")
-    include("sort.jl")
     include("invfile.jl")
     include("winvfile.jl")
     include("binvfile.jl")

@@ -1,9 +1,5 @@
 # This file is part of InvertedFiles.jl
 
-function push_posting_list!(Q, idx::BinaryInvertedFile, tokenID, val)
-	@inbounds push!(Q, PostingList(idx.lists[tokenID]))
-end
-
 """
 	search(callback::Function, idx::BinaryInvertedFile, Q, P, t)
 
@@ -25,7 +21,7 @@ function search_(callback::Function, idx::BinaryInvertedFile, dist, Q::Vector{LT
     n = length(Q)
 
 	umerge(Q, P_; t) do L, P, isize
-        @inbounds objID = L[1].I[P[1]]
+        @inbounds objID = L[1].list[P[1]]
         @inbounds d = set_distance_evaluate(dist, isize, n, idx.sizes[objID])
 		callback(objID, d)
 	end

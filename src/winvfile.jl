@@ -13,38 +13,31 @@ This index is optimized to efficiently solve `k` nearest neighbors (cosine dista
 - `lists`: posting lists (non-zero id-elements in rows)
 - `weights`: non-zero weights (in rows)
 - `sizes`: number of non-zero values in each element (non-zero values in columns)
-- `locks`: per-row locks for multithreaded construction
 """
-struct WeightedInvertedFile{DbType<:Union{<:AbstractDatabase,Nothing}} <: AbstractInvertedFile
-    db::DbType
-    lists::Vector{Vector{UInt32}}  ## posting lists
-    weights::Vector{Vector{Float32}}  ## associated weights
-    sizes::Vector{Int32}  ## number of non zero elements per vector
-    locks::Vector{SpinLock}
+struct WeightedInvertedFile{DbType<:Union{<:AbstractDatabase,Nothing}, AdjType<:AbstractAdjacencyList} <: AbstractInvertedFile
+    db::DbType    
+    adj::AdjType
+    sizes::Vector{UInt32}  ## number of non zero elements per vector
 end
 
 SimilaritySearch.distance(idx::WeightedInvertedFile) = NormalizedCosineDistance()
 
-function SimilaritySearch.saveindex(filename::AbstractString, index::InvFileType, meta::Dict) where {InvFileType<:AbstractInvertedFile}
-    lists = SimilaritySearch.flat_adjlist(UInt32, index.lists)
-    weights = SimilaritySearch.flat_adjlist(UInt32, index.weights)
-    index = InvFileType(index; lists=Vector{UInt32}[], weights=Vector{Float32}[])
-    jldsave(filename; index, meta, lists, weights)
+function SimilaritySearch.saveindex(filename::AbstractString, index::WeightedInvertedFile, meta::Dict)
+    adj = StaticAdjacencyList(index.adj)
+    index = InvFileType(index; adj)
+    jldsave(filename; index, meta)
 end
 
-function restoreindex(index::InvFileType, meta::Dict, f) where {InvFileType<:AbstractInvertedFile}
-    lists = unflat_adjlist(UInt32, f["lists"])
-    weights = unflat_adjlist(UInt32, f["weights"])
-    copy(index; lists, weights), meta
+function restoreindex(index::WeightedInvertedFile, meta::Dict, f; kwargs...)
+    adj = AdjacencyList(index.adj)
+    copy(index; adj), meta
 end
 
 WeightedInvertedFile(invfile::WeightedInvertedFile;
     db=invfile.db,
-    lists=invfile.lists,
-    weights=invfile.weights,
+    adj=invfile.adj,
     sizes=invfile.sizes,
-    locks=invfile.locks
-) = WeightedInvertedFile(db, lists, weights, sizes, locks)
+) = WeightedInvertedFile(db, adj, sizes, locks)
 
 """
     WeightedInvertedFile(vocsize::Integer)
@@ -55,15 +48,16 @@ function WeightedInvertedFile(vocsize::Integer, db=nothing)
     vocsize > 0 || throw(ArgumentError("voc must not be empty"))
     WeightedInvertedFile(
         db,
-        [UInt32[] for i in 1:vocsize],
-        [Float32[] for i in 1:vocsize],
-        Vector{Int32}(undef, 0), 
-        [SpinLock() for i in 1:vocsize]
+        AdjacencyList(WeightedEndPoint; n=vocsize),
+        Vector{UInt32}(undef, 0)
     )
 end
 
 function internal_push!(idx::WeightedInvertedFile, tokenID, objID, weight, sort)
-    push!(idx.lists[tokenID], objID)
-    push!(idx.weights[tokenID], weight)
-    sort && sortlastpush!(idx.lists[tokenID], idx.weights[tokenID])
+    if sort
+        add_edge!(idx.adj, tokenID, WeightedEndPoint(objID, weight), IdOrder)
+    else
+        add_edge!(idx.adj, tokenID, WeightedEndPoint(objID, weight), nothing)
+    end
+
 end

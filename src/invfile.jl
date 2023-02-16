@@ -1,7 +1,6 @@
 # This file is part of InvertedFiles.jl
 
 using SimilaritySearch, LinearAlgebra, SparseArrays
-
 export AbstractInvertedFile
 
 """
@@ -18,7 +17,7 @@ Number of indexed elements
 """
 Base.length(idx::AbstractInvertedFile) = length(idx.sizes)
 # SimilaritySearch.getpools(::AbstractInvertedFile, results=SimilaritySearch.GlobalKnnResult) = results
-Base.show(io::IO, idx::AbstractInvertedFile) = print(io, "{$(typeof(idx)) vocsize=$(length(idx.lists)), n=$(length(idx))}")
+Base.show(io::IO, idx::AbstractInvertedFile) = print(io, "{$(typeof(idx)) vocsize=$(length(idx.adj)), n=$(length(idx))}")
 SimilaritySearch.database(idx::AbstractInvertedFile) = idx.db
 
 """
@@ -114,12 +113,7 @@ function parallel_append!(idx, db, startID, n, minbatch, tol)
             tokenID == 0 && continue # tokenID == 0 is allowed as centinel (useful for plain distance evaluation of cosine)
             nz += 1
             sumw += weight
-            lock(idx.locks[tokenID])
-            try
-                internal_push!(idx, tokenID, objID, weight, true)
-            finally
-                unlock(idx.locks[tokenID])
-            end
+            internal_push!(idx, tokenID, objID, weight, true)
         end
 
         internal_parallel_finish_append_object!(idx, objID, nz, sumw)

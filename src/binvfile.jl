@@ -2,7 +2,6 @@
 
 export BinaryInvertedFile, set_distance_evaluate
 
-
 """
     struct BinaryInvertedFile <: AbstractInvertedFile
 
@@ -17,11 +16,12 @@ Creates a binary weighted inverted index. An inverted index is an sparse matrix 
 """
 struct BinaryInvertedFile{
             DistType<:Union{IntersectionDissimilarity,DiceDistance,JaccardDistance,CosineDistanceSet},
+            AdjType<:AbstractAdjacencyList,
             DbType<:Union{<:AbstractDatabase,Nothing}
         } <: AbstractInvertedFile
     dist::DistType
     db::DbType
-    lists::Vector{Vector{UInt32}}
+    adj::AdjType
     sizes::Vector{UInt32}
     locks::Vector{SpinLock}
 end
@@ -29,22 +29,21 @@ end
 BinaryInvertedFile(invfile::BinaryInvertedFile;
     dist=invfile.dist,
     db=invfile.db,
-    lists=invfile.lists,
+    adj=invfile.adj,
     sizes=invfile.sizes,
     locks=invfile.locks
-) = BinaryInvertedFile(dist, db, lists, sizes, locks)
+) = BinaryInvertedFile(dist, db, adj, sizes, locks)
 
 SimilaritySearch.distance(idx::BinaryInvertedFile) = idx.dist
 
-function SimilaritySearch.saveindex(filename::AbstractString, index::InvFileType, meta::Dict) where {InvFileType<:AbstractInvertedFile}
-    lists = SimilaritySearch.flat_adjlist(UInt32, index.lists)
-    index = InvFileType(index; lists=Vector{UInt32}[])
-    jldsave(filename; index, meta, lists)
+function SimilaritySearch.saveindex(filename::AbstractString, index::BinaryInvertedFile, meta::Dict)
+    I=BinaryInvertedFile(indez; adj=SimilaritySearch.StaticAdjacencyList(index.adj))
+
+    jldsave(filename; index=I, meta)
 end
 
-function restoreindex(index::InvFileType, meta::Dict, f) where {InvFileType<:AbstractInvertedFile}
-    lists = unflat_adjlist(UInt32, f["lists"])
-    copy(index; lists), meta
+function restoreindex(index::BinaryInvertedFile, meta::Dict, f)
+    BinaryInvertedFile(index; adj=SimilaritySearch.AdjacencyList(index.adj)), meta
 end
 
 """
@@ -68,11 +67,13 @@ Creates an `BinaryInvertedFile` with the given vocabulary size and for the given
 """
 function BinaryInvertedFile(vocsize::Integer, dist=JaccardDistance(), db=nothing)
     vocsize > 0 || throw(ArgumentError("voc must not be empty"))
-    BinaryInvertedFile(dist, db, [UInt32[] for _ in 1:vocsize], UInt32[],  [SpinLock() for i in 1:vocsize])
+    BinaryInvertedFile(dist, db, AdjacencyList(UInt32, n=vocsize), UInt32[],  [SpinLock() for i in 1:vocsize])
 end
 
 function internal_push!(idx::BinaryInvertedFile, tokenID, objID, _, sort)
-    @inbounds L = idx.lists[tokenID]
-    push!(L, objID)
-    sort && sortlastpush!(L)
+    if sort
+        add_edge!(idx.adj, tokenID, objID, IdOrder)
+    else
+        add_edge!(idx.adj, tokenID, objID, nothing)
+    end
 end
