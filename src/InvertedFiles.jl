@@ -20,7 +20,6 @@ module InvertedFiles
     include("invfilesearch.jl")
     include("winvfilesearch.jl")
     include("binvfilesearch.jl")
-    include("sparseconversions.jl")
 
     include("refs.jl")
     include("knr.jl")
