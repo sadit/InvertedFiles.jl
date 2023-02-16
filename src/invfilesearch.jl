@@ -31,10 +31,14 @@ end
 Searches `q` in `idx` using the cosine dissimilarity, it computes the full operation on `idx`. `res` specify the query
 """
 function search(idx::AbstractInvertedFile, q, res::KnnResult; pools=getpools(idx), tol=1e-6, t=1)
+	search_invfile(idx, q, res::KnnResult, pools, tol, t)
+end
+
+function search_invfile(idx::AbstractInvertedFile, q, res::KnnResult, pools, tol, t)
 	Q = prepare_posting_lists_for_querying(idx, q, pools, tol)
 	length(Q) == 0 && return SearchResult(res, cost)
     P = getcachepositions(length(Q), pools)
-    cost = search(idx, Q, P, t) do objID, d
+    cost = search_invfile(idx, Q, P, t) do objID, d
 		push_item!(res, objID, d)
 	end
 

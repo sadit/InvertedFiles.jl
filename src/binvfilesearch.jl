@@ -13,11 +13,11 @@ Find candidates for solving query `Q` using `idx`. It calls `callback` on each c
 - `P`: a vector of starting positions in Q (initial state as ones)
 - `t`: threshold (t=1 union, t > 1 solves the t-threshold problem)
 """
-function search(callback::Function, idx::BinaryInvertedFile, Q::Vector{LType}, P_::Vector{UInt32}, t) where {LType<:PostingList}
-	search_(callback, idx, idx.dist, Q, P_, t)
+function search_invfile(callback::Function, idx::BinaryInvertedFile, Q::Vector{LType}, P_::Vector{UInt32}, t) where {LType<:PostingList}
+	search_invfile_(callback, idx, idx.dist, Q, P_, t)
 end
 
-function search_(callback::Function, idx::BinaryInvertedFile, dist, Q::Vector{LType}, P_::Vector{UInt32}, t) where {LType<:PostingList}
+function search_invfile_(callback::Function, idx::BinaryInvertedFile, dist, Q::Vector{LType}, P_::Vector{UInt32}, t) where {LType<:PostingList}
     n = length(Q)
 
 	umerge(Q, P_; t) do L, P, isize

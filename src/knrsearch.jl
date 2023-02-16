@@ -28,7 +28,7 @@ end
 
 function search_(idx::KnrIndex, q, enc, Q, P_, res::KnnResult, ordering::DistanceOnTopKOrdering)
     enc = reuse!(enc, ordering.top)
-    search(idx.invfile, Q, P_, 1) do objID, d
+    search_invfile(idx.invfile, Q, P_, 1) do objID, d
         @inbounds push_item!(enc, objID, d)
     end
 
@@ -41,7 +41,7 @@ function search_(idx::KnrIndex, q, enc, Q, P_, res::KnnResult, ordering::Distanc
 end
 
 function search_(idx::KnrIndex, q, _, Q, P_, res::KnnResult, ::InternalDistanceOrdering)
-    cost = search(idx.invfile, Q, P_, 1) do objID, d
+    cost = search_invfile(idx.invfile, Q, P_, 1) do objID, d
         @inbounds push_item!(res, objID, d)
     end
 
