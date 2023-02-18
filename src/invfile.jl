@@ -82,9 +82,7 @@ sparseiterator(db::AbstractDatabase, i) = sparseiterator(db[i])
 
 `(id, weight)` iterator for `obj` for generic databases.
 """
-sparseiterator(obj::KnnResult) = obj
 sparseiterator(obj::AbstractVector{<:AbstractFloat}) = enumerate(obj)
-sparseiterator(obj::AbstractVector{<:Integer}) = ((u, 1) for u in obj)
 sparseiterator(obj::Set) = (convertpair(u) for u in obj)
 sparseiterator(obj::SortedIntSet) = (convertpair(u) for u in obj)
 sparseiterator(obj) = (convertpair(u) for u in obj)
@@ -98,37 +96,8 @@ convertpair(u::Integer) = (u, 1)
 convertpair(u::Tuple) = u # assert length(u) = 2
 convertpair(u::Vector) = u # assert length(u) = 2
 convertpair(u::Pair) = u
-
-function parallel_append!(idx, db, startID, n, minbatch, tol)
-    internal_parallel_prepare_append!(idx, startID + n)
-    minbatch = getminbatch(minbatch, n)
-
-    @batch minbatch=minbatch per=thread for i in 1:n
-        objID = i + startID
-        nz = 0
-        sumw = 0.0
-
-        @inbounds for (tokenID, weight) in sparseiterator(db, i)
-            weight < tol && continue
-            tokenID == 0 && continue # tokenID == 0 is allowed as centinel (useful for plain distance evaluation of cosine)
-            nz += 1
-            sumw += weight
-            internal_push!(idx, tokenID, objID, weight, true)
-        end
-
-        internal_parallel_finish_append_object!(idx, objID, nz, sumw)
-    end
-
-    idx
-end
-
-function internal_parallel_prepare_append!(idx::AbstractInvertedFile, new_size::Integer)
-    resize!(idx.sizes, new_size)
-end
-
-function internal_parallel_finish_append_object!(idx::AbstractInvertedFile, objID::Integer, nz::Integer, sumw)
-    idx.sizes[objID] = nz
-end
+convertpair(u::IdWeight) = (u.id, u.weight)
+convertpair(u::IdIntWeight) = (u.id, u.weight)
 
 function SimilaritySearch.index!(idx::AbstractInvertedFile; minbatch=0, pools=nothing, tol=1e-6)
     startID = length(idx)
@@ -156,7 +125,6 @@ Appends all `db` elements into the index `idx`. It work in parallel using all av
 """
 function SimilaritySearch.append_items!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(db); minbatch=0, pools=nothing, tol=1e-6)
     startID = length(idx)
-    resize!(idx.sizes, startID + n)
     !isnothing(idx.db) && append!(idx.db, db)
 
     parallel_append!(idx, db, startID, n, minbatch, tol)
@@ -176,22 +144,40 @@ Inserts a single element into the index. This operation is not thread-safe.
 - `tol`: controls what is a zero (i.e., `weight < tol` will be ignored)
 """
 function SimilaritySearch.push_item!(idx::AbstractInvertedFile, obj, objID=length(idx) + 1; pools=nothing, tol=1e-6)
-    # n = length(idx) + 1
-    nz = internal_push_object!(idx, objID, obj, tol)
-    push!(idx.sizes, nz)
+    internal_push_object!(idx, objID, obj, tol, false, true)
     !isnothing(idx.db) && push!(idx.db, obj)
     idx
 end
 
-function internal_push_object!(idx::AbstractInvertedFile, objID::Integer, obj, tol::Float64)
+function internal_push_object!(idx::AbstractInvertedFile, objID::Integer, obj, tol::Float64, sort, is_push)
     nz = 0
     @inbounds for (tokenID, weight) in sparseiterator(obj)
         weight < tol && continue
         tokenID == 0 && continue  # object 0 is a centinel
         nz += 1
-        internal_push!(idx, tokenID, objID, weight, false)
+        internal_push!(idx, tokenID, objID, weight, sort)
     end
 
-    nz
+    if is_push
+        push!(idx.sizes, nz)
+    else
+        idx.sizes[objID] = nz
+    end
 end
 
+
+function parallel_append!(idx, db, startID, n, minbatch, tol)
+    internal_parallel_prepare_append!(idx, startID + n)
+    minbatch = getminbatch(minbatch, n)
+
+    @batch minbatch=minbatch per=thread for i in 1:n
+        objID = i + startID
+        internal_push_object!(idx, objID, db[i], tol, true, false)
+    end
+
+    idx
+end
+
+function internal_parallel_prepare_append!(idx::AbstractInvertedFile, new_size::Integer)
+    resize!(idx.sizes, new_size)
+end

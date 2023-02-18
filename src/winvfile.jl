@@ -48,16 +48,16 @@ function WeightedInvertedFile(vocsize::Integer, db=nothing)
     vocsize > 0 || throw(ArgumentError("voc must not be empty"))
     WeightedInvertedFile(
         db,
-        AdjacencyList(WeightedEndPoint; n=vocsize),
+        AdjacencyList(IdWeight; n=vocsize),
         Vector{UInt32}(undef, 0)
     )
 end
 
 function internal_push!(idx::WeightedInvertedFile, tokenID, objID, weight, sort)
     if sort
-        add_edge!(idx.adj, tokenID, WeightedEndPoint(objID, weight), IdOrder)
+        add_edge!(idx.adj, tokenID, IdWeight(objID, weight), IdOrder)
     else
-        add_edge!(idx.adj, tokenID, WeightedEndPoint(objID, weight), nothing)
+        add_edge!(idx.adj, tokenID, IdWeight(objID, weight), nothing)
     end
 
 end

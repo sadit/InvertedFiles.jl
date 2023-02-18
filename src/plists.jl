@@ -15,4 +15,5 @@ end
 
 @inline Base.length(plist::PostingList) = length(plist.list)
 @inline _get_key(plist::PostingList{T}, i) where {T<:Number} = @inbounds plist.list[i]
-@inline _get_key(plist::PostingList{WeightedEndPoint}, i) = @inbounds plist.list[i].id
+@inline _get_key(plist::PostingList{IdWeight}, i) = @inbounds plist.list[i].id
+@inline _get_key(plist::PostingList{IdIntWeight}, i) = @inbounds plist.list[i].id

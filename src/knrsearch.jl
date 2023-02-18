@@ -33,8 +33,8 @@ function search_(idx::KnrIndex, q, enc, Q, P_, res::KnnResult, ordering::Distanc
     end
 
     dist = distance(idx)
-    for objID in idview(enc)
-        @inbounds push_item!(res, objID, evaluate(dist, q, database(idx, objID)))
+    for item in enc
+        @inbounds push_item!(res, item.id, evaluate(dist, q, database(idx, item.id)))
     end
 
     SearchResult(res, length(enc))

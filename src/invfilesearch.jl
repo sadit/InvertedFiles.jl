@@ -36,7 +36,7 @@ end
 
 function search_invfile(idx::AbstractInvertedFile, q, res::KnnResult, pools, tol, t)
 	Q = prepare_posting_lists_for_querying(idx, q, pools, tol)
-	length(Q) == 0 && return SearchResult(res, cost)
+	length(Q) == 0 && return SearchResult(res, 0)
     P = getcachepositions(length(Q), pools)
     cost = search_invfile(idx, Q, P, t) do objID, d
 		push_item!(res, objID, d)
