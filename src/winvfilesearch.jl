@@ -1,7 +1,7 @@
 # This file is part of InvertedFiles.jl
 
 """
-search(callback::Function, idx::WeightedInvertedFile, Q, P; t=1)
+	search_invfile(callback::Function, idx::WeightedInvertedFile, Q, P_, t)
 
 Find candidates for solving query `Q` using `idx`. It calls `callback` on each candidate `(objID, dist)`
 
