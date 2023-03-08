@@ -1,7 +1,7 @@
 name = "InvertedFiles"
 uuid = "b20bd276-2c70-11ec-161a-3d1e1109a1c3"
 authors = ["Eric S. Tellez <donsadit@gmail.com> and contributors"]
-version = "0.5.1"
+version = "0.5.2"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"

@@ -25,23 +25,20 @@ function prepare_posting_lists_for_querying(accept::Function, idx::AbstractInver
 	Q
 end
 
-function prepare_posting_lists_for_querying(idx::AbstractInvertedFile, q, tol::AbstractFloat, pools)
-	prepare_posting_lists_for_querying(idx, q, pools) do idx_, q_, tokenID, weight
-		weight >= tol
-	end
-end
-
 """
 	search(idx::AbstractInvertedFile, q, res::KnnResult; pools=nothing, tol=1e-6, t=1)
 
 Searches `q` in `idx` using the cosine dissimilarity, it computes the full operation on `idx`. `res` specify the query
 """
 function search(idx::AbstractInvertedFile, q, res::KnnResult; pools=getpools(idx), tol=1e-6, t=1)
-	search_invfile(idx, q, res::KnnResult, tol, pools, t)
+  tol::Float32 = convert(Float32, tol)
+	search_invfile(idx, q, res::KnnResult, pools, t) do idx_, q_, tokenID, weight
+		weight >= tol
+	end
 end
 
-function search_invfile(idx::AbstractInvertedFile, q, res::KnnResult, tol, pools, t)
-	Q = prepare_posting_lists_for_querying(idx, q, tol, pools)
+function search_invfile(accept_posting_list::Function, idx::AbstractInvertedFile, q, res::KnnResult, pools, t)
+	Q = prepare_posting_lists_for_querying(accept_posting_list, idx, q, pools)
 	length(Q) == 0 && return SearchResult(res, 0)
     P = getcachepositions(length(Q), pools)
     cost = search_invfile(idx, Q, P, t) do objID, d

@@ -3,16 +3,18 @@
 using InvertedFiles: getcachepositions
 
 """
-    search(idx::KnrIndex, q, res::KnnResult; ksearch=idx.opt.ksearch, ordering=idx.ordering, pools=getpools(D))
+    search(idx::KnrIndex, q, res::KnnResult; ksearch=idx.opt.ksearch, ordering=idx.ordering, pool=getpools(D))
 
 Searches nearest neighbors of `q` inside the `index` under the distance function `dist`.
 """
 function search(idx::KnrIndex, q, res::KnnResult; pools=getpools(idx), ksearch=idx.opt.ksearch)
     enc = getencodeknnresult(ksearch, pools)
     search(idx.centers, q, enc)
-    ifpools = getpools(idx.invfile)
-    Q = prepare_posting_lists_for_querying(idx.invfile, enc, 1e-6, ifpools)
-    P = getcachepositions(length(Q), ifpools)
+    ifpool = getpools(idx.invfile)
+    Q = prepare_posting_lists_for_querying(idx.invfile, enc, ifpool) do _, _, refID, weight
+      true
+    end
+    P = getcachepositions(length(Q), ifpool)
     search_(idx, q, enc, Q, P, res, idx.ordering)
 end
 
