@@ -1,6 +1,4 @@
-# This file is a part of NeighborhoodApproximationIndex.jl
-
-using InvertedFiles: getcachepositions
+# This file is a part of InvertedFiles.jl
 
 """
     search(idx::KnrIndex, q, res::KnnResult; ksearch=idx.opt.ksearch, ordering=idx.ordering, pool=getpools(D))
