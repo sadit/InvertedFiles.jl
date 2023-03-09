@@ -96,7 +96,7 @@ end
 
 getpools(idx::KnrIndex) = GlobalKnrCachesPool
 
-function getencodeknnresult(k::Integer, pools::Vector{KnrCaches})
+function getencodeknnresult(k::Integer, pools)
     reuse!(pools[Threads.threadid()].enc, k)
 end
 
