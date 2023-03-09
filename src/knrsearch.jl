@@ -11,7 +11,7 @@ function search(idx::KnrIndex, q, res::KnnResult; pools=getpools(idx), ksearch=i
     enc = getencodeknnresult(ksearch, pools)
     search(idx.centers, q, enc)
     ifpool = getpools(idx.invfile)
-    Q = prepare_posting_lists_for_querying(idx.invfile, enc, ifpool) do _, _, refID, weight
+    Q = prepare_posting_lists_for_querying(idx.invfile, enc, ifpool) do plist
       true
     end
     P = getcachepositions(length(Q), ifpool)
