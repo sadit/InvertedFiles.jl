@@ -51,11 +51,11 @@ end
 
 Computes the distance function `dist` on a [`BinaryInvertedFile`](@ref).
 """
-set_distance_evaluate(::IntersectionDissimilarity, intersection::Integer, size1::Integer, size2::Integer)::Float32 = 1.0 - intersection / max(size1, size2)
-set_distance_evaluate(::DiceDistance, intersection::Integer, size1::Integer, size2::Integer)::Float32 = 1.0 - (2intersection) / (size1 + size2)
-set_distance_evaluate(::JaccardDistance, intersection::Integer, size1::Integer, size2::Integer)::Float32 = 1.0 - (intersection) / (size1 + size2 - intersection)
-set_distance_evaluate(::CosineDistanceSet, intersection::Integer, size1::Integer, size2::Integer)::Float32 = 1.0 - (intersection) / (sqrt(size1) * sqrt(size2))
-
+set_distance_evaluate(::IntersectionDissimilarity, intersection::Int32, size1::Int32, size2::Int32)::Float32 = 1.0 - intersection / max(size1, size2)
+set_distance_evaluate(::DiceDistance, intersection::Int32, size1::Int32, size2::Int32)::Float32 = 1.0 - (2intersection) / (size1 + size2)
+set_distance_evaluate(::JaccardDistance, intersection::Int32, size1::Int32, size2::Int32)::Float32 = 1.0 - (intersection) / (size1 + size2 - intersection)
+set_distance_evaluate(::CosineDistanceSet, intersection::Int32, size1::Int32, size2::Int32)::Float32 = 1.0 - (intersection) / (sqrt(size1) * sqrt(size2))
+set_distance_evaluate(t, intersection::Integer, size1::Integer, size2::Integer)::Float32 = set_distance_evaluate(t, convert(Int32, intersection), convert(Int32, size1), convert(Int32, size2))
 """
     BinaryInvertedFile(vocsize::Integer, dist=JaccardDistance())
 

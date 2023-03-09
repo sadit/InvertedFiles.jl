@@ -2,6 +2,8 @@
 
 using Test, SimilaritySearch, InvertedFiles, LinearAlgebra, UnicodePlots
 using SimilaritySearch: neighbors
+using JET
+
 function runtest(; dim, n, m,
     numcenters=5ceil(Int, sqrt(n)), k=10, centersrecall=0.95, kbuild=1, ksearch=1,
     parallel_block=256, ordering=DistanceOrdering(), minrecall=1.0, initial=:dnet, maxiters=0)
@@ -18,7 +20,9 @@ function runtest(; dim, n, m,
     @test length(index) == length(X)
     @info "searching in the index"
     @show dim, n, m , numcenters, k, centersrecall, ordering
+    
     tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)
+    @test_call searchbatch(index, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "before optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), index-construction: $indextime"
@@ -26,6 +30,7 @@ function runtest(; dim, n, m,
     @info "**** optimizing ParetoRadius() ****"
     opttime = @elapsed optimize!(index, ParetoRadius(); verbose=false)
     tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)
+    @test_call searchbatch(index, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), optimization-time: $opttime"
@@ -33,6 +38,7 @@ function runtest(; dim, n, m,
     @info "**** optimizing ParetoRecall() ****"
     opttime = @elapsed optimize!(index, ParetoRecall(); verbose=false)
     tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)
+    @test_call searchbatch(index, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), optimization-time: $opttime"
@@ -41,6 +47,7 @@ function runtest(; dim, n, m,
     @info "**** optimizing MinRecall(0.95) ****"
     opttime = @elapsed optimize!(index, MinRecall(0.95); verbose=false)
     tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)
+    @test_call searchbatch(index, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), optimization-time: $opttime"

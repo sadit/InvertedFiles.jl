@@ -20,7 +20,8 @@ function search_(idx::KnrIndex, q, _, Q, P_, res::KnnResult, ::DistanceOrdering)
     dist = idx.dist
     cost = umerge(Q, P_) do L, P, _
         @inbounds objID = _get_key(L[1].list, P[1])
-        @inbounds push_item!(res, objID, evaluate(dist, q, database(idx, objID)))
+        d = evaluate(dist, q, database(idx, objID))
+        push_item!(res, IdWeight(objID, d))
     end
 
     SearchResult(res, cost)

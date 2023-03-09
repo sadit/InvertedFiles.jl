@@ -1,7 +1,7 @@
 # This file is part of InvertedFiles.jl
 
 using InvertedFiles, SimilaritySearch, LinearAlgebra
-using Test
+using Test, JET
 using Random
 Random.seed!(0)
 
@@ -18,6 +18,9 @@ Random.seed!(0)
         a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), A[qid], KnnResult(k))
         b = search(I, B[qid], KnnResult(k))
         @test recallscore(a.res, b.res) == 1.0
+        if i == 1
+          @test_call search(I, B[qid], KnnResult(k))
+        end
     end
 
     # testing with Dict container (map != nothing)
@@ -29,6 +32,9 @@ Random.seed!(0)
         a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), A[qid], KnnResult(k))
         b = search(I, B[qid], KnnResult(k))
         @test recallscore(a.res, b.res) == 1.0
+        if i == 1
+          @test_call search(I, B[qid], KnnResult(k))
+        end
     end
 
     k = 30
@@ -37,6 +43,9 @@ Random.seed!(0)
         a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), A[qid], KnnResult(k))
         b = search(I, B[qid], KnnResult(k))
         @test recallscore(a.res, b.res) == 1.0
+        if i == 1
+          @test_call search(I, B[qid], KnnResult(k))
+        end
     end
 
     ## working on sparse data
@@ -63,6 +72,9 @@ Random.seed!(0)
         b = search(I, B[qid], KnnResult(k))
         @test recallscore(a.res, b.res) == 1.0
         #@show recallscore(a.res, b.res)
+        if i == 1
+          @test_call search(I, B[qid], KnnResult(k))
+        end
     end
 
     I = WeightedInvertedFile(300, B)
@@ -101,7 +113,7 @@ end
         iI, iD = searchbatch(IF, queries, k)
         @time search(IF, queries[1], SimilaritySearch.getknnresult(k))
         @time search(IF, queries[2], SimilaritySearch.getknnresult(k))
-        
+        @test_call search(IF, queries[2], SimilaritySearch.getknnresult(k))
         recall = macrorecall(gI, iI)
         @show dist, recall
         @test recall > 0.95  # sets can be tricky since we can expect many similar distances
