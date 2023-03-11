@@ -125,7 +125,7 @@ Appends all `db` elements into the index `idx`. It work in parallel using all av
 """
 function SimilaritySearch.append_items!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(db); minbatch=0, pools=nothing, tol=1e-6)
     startID = length(idx)
-    !isnothing(idx.db) && append!(idx.db, db)
+    !isnothing(idx.db) && append_items!(idx.db, db)
 
     parallel_append!(idx, db, startID, n, minbatch, tol)
 end
@@ -145,7 +145,7 @@ Inserts a single element into the index. This operation is not thread-safe.
 """
 function SimilaritySearch.push_item!(idx::AbstractInvertedFile, obj, objID=length(idx) + 1; pools=nothing, tol=1e-6)
     internal_push_object!(idx, objID, obj, tol, false, true)
-    !isnothing(idx.db) && push!(idx.db, obj)
+    !isnothing(idx.db) && push_item!(idx.db, obj)
     idx
 end
 
