@@ -4,7 +4,6 @@ authors = ["Eric S. Tellez <donsadit@gmail.com> and contributors"]
 version = "0.5.4"
 
 [deps]
-Cthulhu = "f68482b8-f384-11e8-15f7-abe071a5a75f"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Intersections = "6d0fbc77-481e-44fe-9ace-1653ddcdea34"
 KCenters = "5d8de97f-65f8-4dd6-a15b-0f89c36a43ce"
@@ -18,7 +17,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
-Intersections = "0.2"
+Intersections = "0.3"
 JET = "0.7"
 KCenters = "0.7"
 Parameters = "0.12"

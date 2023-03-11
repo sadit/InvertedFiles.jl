@@ -20,7 +20,7 @@ end
 function search_invfile_(callback::Function, idx::BinaryInvertedFile, dist, Q::Vector{LType}, P_::Vector{UInt32}, t::Integer) where {LType<:PostingList}
   n = length(Q)
 
-	umerge(Q, P_; t) do L, P, isize
+	umergefun(Q, P_; t) do L, P, isize
     @inbounds objID = L[1].list[P[1]]
     @inbounds d = set_distance_evaluate(dist, isize, n, idx.sizes[objID])
 		callback(objID, d)

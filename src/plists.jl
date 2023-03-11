@@ -14,6 +14,6 @@ struct PostingList{EndPointType}
 end
 
 @inline Base.length(plist::PostingList) = length(plist.list)
-@inline _get_key(plist::PostingList{T}, i::Integer) where {T<:Integer} = @inbounds plist.list[i]
-@inline _get_key(plist::PostingList{IdWeight}, i::Integer) = @inbounds plist.list[i].id
-@inline _get_key(plist::PostingList{IdIntWeight}, i::Integer) = @inbounds plist.list[i].id
+@inline _get_key(plist::PostingList{UInt32}, i::Integer)::UInt32 = @inbounds plist.list[i]
+@inline _get_key(plist::PostingList{IdWeight}, i::Integer)::UInt32 = @inbounds plist.list[i].id
+@inline _get_key(plist::PostingList{IdIntWeight}, i::Integer)::UInt32 = @inbounds plist.list[i].id
