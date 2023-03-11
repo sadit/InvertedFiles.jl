@@ -1,28 +1,27 @@
 # This file is part of InvertedFiles.jl
 
 """
-	search(callback::Function, idx::BinaryInvertedFile, Q, P, t)
+  search_invfile(accept_posting_list::Function, idx::BinaryInvertedFile, Q, res::KnnResult, t, pools)
 
 Find candidates for solving query `Q` using `idx`. It calls `callback` on each candidate `(objID, dist)`
 
 # Arguments
 
-- `callback`: callback function on each candidate
+- `accept_posting_list`: predicate to accept or reject a posting list
 - `idx`: inverted index
-- `Q`: the set of involved posting lists, see [`prepare_posting_lists_for_querying`](@ref)
-- `P`: a vector of starting positions in Q (initial state as ones)
+- `Q`: the set of involved posting lists, see [`select_posting_lists`](@ref)
 - `t`: threshold (t=1 union, t > 1 solves the t-threshold problem)
 """
-function search_invfile(callback::Function, idx::BinaryInvertedFile, Q::Vector{LType}, P_::Vector{UInt32}, t::Integer) where {LType<:PostingList}
-	search_invfile_(callback, idx, idx.dist, Q, P_, t)
-end
 
-function search_invfile_(callback::Function, idx::BinaryInvertedFile, dist, Q::Vector{LType}, P_::Vector{UInt32}, t::Integer) where {LType<:PostingList}
-  n = length(Q)
+function search_invfile(idx::BinaryInvertedFile, Q::Vector{PostType}, res::KnnResult, t, pools) where {PostType<:PostingList}
+    n = length(Q)
+    P_ = getcachepositions(n, pools)
+	
+    cost = umergefun(Q, P_; t) do L, P, isize
+        @inbounds objID = L[1].list[P[1]]
+        @inbounds d = set_distance_evaluate(idx.dist, isize, n, idx.sizes[objID])
+        push_item!(res, IdWeight(objID, d))
+    end
 
-	umergefun(Q, P_; t) do L, P, isize
-    @inbounds objID = L[1].list[P[1]]
-    @inbounds d = set_distance_evaluate(dist, isize, n, idx.sizes[objID])
-		callback(objID, d)
-	end
+    SearchResult(res, cost)
 end

@@ -8,16 +8,17 @@ Searches nearest neighbors of `q` inside the `index` under the distance function
 function search(idx::KnrIndex, q, res::KnnResult; pools=getpools(idx), ksearch=idx.opt.ksearch)
     enc = getencodeknnresult(ksearch, pools)
     search(idx.centers, q, enc)
-    ifpool = getpools(idx.invfile)
-    Q = prepare_posting_lists_for_querying(idx.invfile, enc, ifpool) do plist
+    Q = select_posting_lists(idx.invfile, enc) do plist
       true
     end
-    P = getcachepositions(length(Q), ifpool)
-    search_(idx, q, enc, Q, P, res, idx.ordering)
+    
+    search_(idx, q, enc, Q, res, idx.ordering)
 end
 
-function search_(idx::KnrIndex, q, _, Q, P_, res::KnnResult, ::DistanceOrdering)
+function search_(idx::KnrIndex, q, _, Q, res::KnnResult, ::DistanceOrdering)
     dist = idx.dist
+    P_ = getcachepositions(length(Q), idx.invfile)
+
     cost = umergefun(Q, P_) do L, P, _
         @inbounds objID = _get_key(L[1].list, P[1])
         d = evaluate(dist, q, database(idx, objID))
@@ -27,11 +28,10 @@ function search_(idx::KnrIndex, q, _, Q, P_, res::KnnResult, ::DistanceOrdering)
     SearchResult(res, cost)
 end
 
-function search_(idx::KnrIndex, q, enc, Q, P_, res::KnnResult, ordering::DistanceOnTopKOrdering)
+function search_(idx::KnrIndex, q, enc, Q, res::KnnResult, ordering::DistanceOnTopKOrdering)
     enc = reuse!(enc, ordering.top)
-    search_invfile(idx.invfile, Q, P_, 1) do objID, d
-        @inbounds push_item!(enc, objID, d)
-    end
+    pools = getpools(idx.invfile)
+    search_invfile(idx.invfile, Q, enc, 1, pools)
 
     dist = distance(idx)
     for item in enc
@@ -41,10 +41,7 @@ function search_(idx::KnrIndex, q, enc, Q, P_, res::KnnResult, ordering::Distanc
     SearchResult(res, length(enc))
 end
 
-function search_(idx::KnrIndex, q, _, Q, P_, res::KnnResult, ::InternalDistanceOrdering)
-    cost = search_invfile(idx.invfile, Q, P_, 1) do objID, d
-        @inbounds push_item!(res, objID, d)
-    end
-
-    SearchResult(res, cost)
+function search_(idx::KnrIndex, q, _, Q, res::KnnResult, ::InternalDistanceOrdering)
+    pools = getpools(idx.invfile)
+    search_invfile(idx.invfile, Q, res, 1, pools)
 end

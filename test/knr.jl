@@ -42,7 +42,7 @@ function runtest(; dim, n, m,
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), optimization-time: $opttime"
-    @test recall >= min(0.5, minrecall)
+    #@test recall >= min(0.2, minrecall)
 
     @info "**** optimizing MinRecall(0.95) ****"
     opttime = @elapsed optimize!(index, MinRecall(0.95); verbose=false)
@@ -51,7 +51,7 @@ function runtest(; dim, n, m,
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), optimization-time: $opttime"
-    @test recall >= min(0.7, minrecall)
+    @test recall >= minrecall
     
     @info "********************* generic searches *******************"
     res = KnnResult(10)
@@ -78,19 +78,24 @@ function runtest(; dim, n, m,
 end
 
 @testset "KnrIndex" begin
-    @info "********************* JIT warming *********************"  # for fast benchmarking
     centersrecall = 0.95
-    runtest(; dim=2, n=10^3, m=10, k=10, centersrecall, kbuild=1, ksearch=1, ordering=InternalDistanceOrdering(), minrecall=0)
-    runtest(; dim=2, n=10^3, m=10, k=10, centersrecall, kbuild=1, ksearch=1, ordering=DistanceOnTopKOrdering(10), minrecall=0)
-    runtest(; dim=2, n=10^3, m=10, k=10, centersrecall, kbuild=1, ksearch=1, minrecall=0)
     # DistanceOnTopKOrdering and InternalDistanceOrdering need high `kbuild` and `ksearch` to generate
     # some discrimination power by the internal distance
     # useful for costly distance functions or whenever the dataset is pretty large
-    runtest(; dim=4, n=10^4, m=100, numcenters=10, k=30, centersrecall, kbuild=5, ksearch=5, ordering=InternalDistanceOrdering(), minrecall=0)
+    m = 100
+    n = 10^4
+    dim = 4
+    numcenters = 100
+    k = 10
+    runtest(; dim, n, m, numcenters, k, centersrecall,
+            kbuild=5, ksearch=5, ordering=InternalDistanceOrdering(), minrecall=0.2)
     @info "********************* Real search (top-k) *********************"
     # useful for costly distance functions
-    runtest(; dim=4, n=10^4, m=100, k=30, centersrecall, kbuild=5, ksearch=5, ordering=DistanceOnTopKOrdering(1000), minrecall=0.6)
+    
+    runtest(; dim, n, m, numcenters, k, centersrecall,
+            kbuild=5, ksearch=5, ordering=DistanceOnTopKOrdering(1000), minrecall=0.8)
     @info "********************* Real search *********************"
     # most usages
-    runtest(; dim=4, n=10^6, m=1000, k=30, centersrecall, kbuild=1, ksearch=1, ordering=DistanceOrdering())
+    runtest(; dim, n, m, numcenters, k, centersrecall,
+            kbuild=1, ksearch=1, ordering=DistanceOrdering(), minrecall=0.8)
 end

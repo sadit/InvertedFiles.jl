@@ -50,6 +50,9 @@ function getcachepositions(k::Integer, pools::Vector{InvertedFilesCaches})
     P
 end
 
+getcachepostinglists(index::AbstractInvertedFile) = getcachepostinglists(getpools(idx))
+getcachepositions(k::Integer, idx::AbstractInvertedFile) = getcachepositions(k, getpools(idx))
+
 const GlobalInvertedFilesCachesPool = Vector{InvertedFilesCaches}(undef, 0)
 
 function __init__invfile()
