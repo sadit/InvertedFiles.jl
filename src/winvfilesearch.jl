@@ -12,7 +12,7 @@ Find candidates for solving query `Q` using `idx`. It calls `callback` on each c
 """
 function search_invfile(idx::WeightedInvertedFile, Q::Vector{PostType}, res::KnnResult, t, pools) where {PostType<:PostingList}
     P_ = getcachepositions(length(Q), pools)
-    cost = umergefun(Q, P_; t) do L, P, m
+    cost = xmergefun(Q, P_; t) do L, P, m
         @inbounds w = 1.0 - L[1].weight * L[1].list[P[1]].weight
         @inbounds objID = L[1].list[P[1]].id
         @inbounds @simd for i in 2:m

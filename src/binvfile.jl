@@ -37,8 +37,7 @@ BinaryInvertedFile(invfile::BinaryInvertedFile;
 SimilaritySearch.distance(idx::BinaryInvertedFile) = idx.dist
 
 function SimilaritySearch.saveindex(filename::AbstractString, index::BinaryInvertedFile, meta::Dict)
-    I=BinaryInvertedFile(indez; adj=SimilaritySearch.StaticAdjacencyList(index.adj))
-
+    I = BinaryInvertedFile(index; adj=SimilaritySearch.StaticAdjacencyList(index.adj))
     jldsave(filename; index=I, meta)
 end
 

@@ -17,7 +17,7 @@ function search_invfile(idx::BinaryInvertedFile, Q::Vector{PostType}, res::KnnRe
     n = length(Q)
     P_ = getcachepositions(n, pools)
 	
-    cost = umergefun(Q, P_; t) do L, P, isize
+    cost = xmergefun(Q, P_; t) do L, P, isize
         @inbounds objID = L[1].list[P[1]]
         @inbounds d = set_distance_evaluate(idx.dist, isize, n, idx.sizes[objID])
         push_item!(res, IdWeight(objID, d))
