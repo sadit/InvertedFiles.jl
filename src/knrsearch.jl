@@ -6,8 +6,8 @@
 Searches nearest neighbors of `q` inside the `index` under the distance function `dist`.
 """
 function search(idx::KnrIndex, q, res::KnnResult; t=1, pools=getpools(idx), ksearch=idx.opt.ksearch)
-    enc = getencodeknnresult(ksearch, pools)
-    search(idx.centers, q, enc)
+    enc = encode_object_res!(idx.encoder, q)
+    idx.invfile isa WeightedInvertedFile && knr_as_similarity!(enc)
     Q = select_posting_lists(idx.invfile, enc) do plist
       true
     end
@@ -16,7 +16,7 @@ function search(idx::KnrIndex, q, res::KnnResult; t=1, pools=getpools(idx), ksea
 end
 
 function search_(idx::KnrIndex, q, _, Q, res::KnnResult, t, ::DistanceOrdering)
-    dist = idx.dist
+    dist = distance(idx)
     P_ = getcachepositions(length(Q), idx.invfile)
 
     cost = xmergefun(Q, P_; t) do L, P, _
@@ -29,7 +29,7 @@ function search_(idx::KnrIndex, q, _, Q, res::KnnResult, t, ::DistanceOrdering)
 end
 
 function search_(idx::KnrIndex, q, enc, Q, res::KnnResult, t, ordering::DistanceOnTopKOrdering)
-    enc = reuse!(enc, ordering.top)
+    enc = encode_object_res!(idx.encoder, q; k=ordering.top)
     pools = getpools(idx.invfile)
     search_invfile(idx.invfile, Q, enc, t, pools)
 

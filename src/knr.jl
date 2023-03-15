@@ -52,64 +52,44 @@ The K nearest references inverted index
 - `opt`: the parameters to be optimized by `optimize!`
 """
 struct KnrIndex{
-            DistType<:SemiMetric,
-            DataType<:AbstractDatabase,
-            CentersIndex<:AbstractSearchIndex,
-            InvIndexType<:AbstractInvertedFile,
-            OrderingType<:KnrOrderingStrategy
+                KnrEncoder<:Knr,
+                DataType<:AbstractDatabase,
+                InvIndexType<:AbstractInvertedFile,
+                OrderingType<:KnrOrderingStrategy
         } <: AbstractSearchIndex
-    dist::DistType
+    encoder::KnrEncoder
     db::DataType
-    centers::CentersIndex
     invfile::InvIndexType
-    kbuild::Int32
     ordering::OrderingType
     opt::KnrOpt
 end
 
 @inline Base.length(idx::KnrIndex) = length(idx.invfile)
-Base.show(io::IO, idx::KnrIndex) = print(io, "{$(typeof(idx)) centers=$(typeof(idx.centers)), n=$(length(idx)), ordering=$(idx.ordering)}")
+@inline SimilaritySearch.getpools(idx::KnrIndex) = nothing
+@inline SimilaritySearch.database(idx::KnrIndex) = idx.db
+@inline SimilaritySearch.database(idx::KnrIndex, i) = idx.db[i]
+@inline SimilaritySearch.distance(idx::KnrIndex) = distance(idx.encoder.refs)
 
-"""
-    struct KnrCaches
-        enc
-    end
-    
-Caches used for `KnrIndex` (one per thread)
-
-# Properties
-- `enc`: `KnnResult` for encoding purposes
-"""
-struct KnrCaches
-    enc::KnnResult
-end
-
-const GlobalKnrCachesPool = Vector{KnrCaches}(undef, 0)
-
-function __init__knr()
-    n = Threads.nthreads()
-
-    while length(GlobalKnrCachesPool) < n
-        push!(GlobalKnrCachesPool, KnrCaches(KnnResult(10)))
-    end
-end
-
-getpools(idx::KnrIndex) = GlobalKnrCachesPool
-
-function getencodeknnresult(k::Integer, pools)
-    reuse!(pools[Threads.threadid()].enc, k)
-end
+Base.show(io::IO, idx::KnrIndex) = print(io, "{$(typeof(idx)), n=$(length(idx)), ordering=$(idx.ordering)}")
 
 """
     push_item!(idx::KnrIndex, obj; pools=getpools(idx), encpools=getpools(idx.centers))
 
 Inserts `obj` into the indexed
 """
-function SimilaritySearch.push_item!(idx::KnrIndex, obj; pools=getpools(idx), encpools=getpools(idx.centers))
-    res = getencodeknnresult(idx.kbuild, pools)
-    search(idx.centers, obj, res; pools=encpools)
+function SimilaritySearch.push_item!(idx::KnrIndex, obj; pools=nothing)
+    res = encode_object_res!(idx.encoder, obj)
+    idx.invfile isa WeightedInvertedFile && knr_as_similarity!(res)
     push_item!(idx.invfile, res)
     idx
+end
+
+function knr_as_similarity!(knr::KnnResult)
+    return 
+    for i in eachindex(knr)
+        p = knr[i]
+        knr[i] = IdWeight(p.id, 1f0 - i/length(knr))
+    end
 end
 
 """
@@ -136,10 +116,9 @@ Appends all items in the database `db` into the index
 """
 function SimilaritySearch.append_items!(idx::KnrIndex, db;
         parallel_block=get_parallel_block(length(db)),
-        pools=getpools(idx),
+        pools=nothing,
         verbose=true
     )
-
     append_items!(idx.db, db)
     index!(idx; parallel_block, pools, verbose)
 end
@@ -162,14 +141,15 @@ Indexes all non indexed items in the database
 function index!(idx::KnrIndex; parallel_block=get_parallel_block(length(idx.db)), minbatch=0, pools=nothing, verbose=true)
     sp = length(idx) + 1
     n = length(idx.db)
-    E = [KnnResult(idx.kbuild) for _ in 1:parallel_block]
+    E = [KnnResult(idx.encoder.k) for _ in 1:parallel_block]
     while sp < n
         ep = min(n, sp + parallel_block - 1)
         verbose && println(stderr, "$(typeof(idx)) appending chunk ", (sp=sp, ep=ep, n=n), " ", Dates.now())
     
         @batch minbatch=getminbatch(minbatch, ep-sp+1) per=thread for i in sp:ep
-            res = reuse!(E[i - sp + 1], idx.kbuild)
-            search(idx.centers, idx[i], res)
+            res = reuse!(E[i - sp + 1])
+            idx.invfile isa WeightedInvertedFile && knr_as_similarity!(res)
+            encode_object_res!(idx.encoder, res, database(idx, i))
         end
 
         append_items!(idx.invfile, VectorDatabase(E), ep-sp+1; minbatch)
@@ -181,77 +161,78 @@ end
 
 """
     KnrIndex(
-        dist::SemiMetric,
-        db::AbstractDatabase;
-        invfiletype=BinaryInvertedFile,
-        invfiledist=JaccardDistance(),
-        initial=:dnet,
-        maxiters=0,
-        refs=references(dist, db; initial),
-        centers=nothing,
-        kbuild=3,
-        ksearch=1,
-        centersrecall::AbstractFloat=length(db) > 10^3 ? 0.95 : 1.0,
-        ordering=DistanceOrdering(),
-        pools=nothing,
-        parallel_block=get_parallel_block(length(db)),
+        db::AbstractDatabase,
+        refs::AbstractSearchIndex;
+        kbuild=4,
+        ksearch=8,
+        parallel_block::Integer=get_parallel_block(length(db)),
         verbose=false
     )
 
 A convenient function to create a `KnrIndex`, it uses several default arguments. After the construction, use [`optimize!`](@ref) to adjust the index to some performance.
 
 # Arguments
-- `dist`: Distance object (a `SemiMetric` object, see `Distances.jl`)
 - `db`: The database of objects to be indexed. 
+- `refs`: The index used for centers/references
 
 # Keyword arguments
-- `invfiletype`: the type of the underlying inverted file (`BinaryInvertedFile` or `WeightedInvertedFile`)
-- `invfiledist`: the distance of the underlying inverted file (see [`InvertedFiles.jl`](https://github.com/sadit/InvertedFiles.jl) package)
-- `centers`: The index used for centers/references, if `centers === nothing` then a sample of `db` will be used.
-- `initial`: indicates how references are selected, only used if `refs` will be computed; see [`references`](@ref) for more detail.
-- `maxiters`: how many iterations of the Lloyd algorithm are applied to initial references, only used if `refs` will be computed; see [`references`](@ref) for more detail.
-- `refs`: the set of reference, only used if `centers === nothing`
-- `centersrecall`: used when `centers === nothing`; if `centersrecall == 1` then it will create an exact index on `refs` or an approximate if `0 < centersrecall < 1`
 - `kbuild`: the number of references to compute and store on construction
 - `ksearch`: the number of references to compute on searching
-- `ordering`: the ordering strategy
-- `pools`: an object with preallocated caches specific for `KnrIndex`, if `pools=nothing` it will use default caches.
 - `parallel_block` Parallel construction works on batches, this is the size of these blocks
 - `verbose` true if you want to see messages
 """
 function KnrIndex(
-        dist::SemiMetric,
-        db::AbstractDatabase;
-        invfiletype=BinaryInvertedFile,
-        invfiledist=JaccardDistance(),
-        initial=:dnet,
-        maxiters=0,
-        refs=references(dist, db; initial, maxiters),
-        centers=nothing,
-        kbuild::Integer=3,
-        ksearch::Integer=1,
-        centersrecall::AbstractFloat=length(db) > 10^3 ? 0.95 : 1.0,
-        ordering::KnrOrderingStrategy=DistanceOrdering(),
-        pools=nothing,
+        db::AbstractDatabase,
+        refs::AbstractSearchIndex;
+        kbuild=4,
+        ksearch=8,
         parallel_block::Integer=get_parallel_block(length(db)),
         verbose=false
     )
-    kbuild = convert(Int32, kbuild)
-    ksearch = convert(Int32, ksearch)
-
-    if centers === nothing
-        if centersrecall == 1.0
-            centers = ExhaustiveSearch(; db=refs, dist)
-        else
-            0 < centersrecall < 1 || throw(ArgumentError("the expected recall for centers index should be 0 < centersrecall < 0"))
-            centers = SearchGraph(; db=refs, dist, verbose)
-            index!(centers; parallel_block)
-            optimize!(centers, MinRecall(centersrecall))
-        end
-    end
     
-    invfile = invfiletype(length(centers), invfiledist)
-    idx = KnrIndex(dist, db, centers, invfile, kbuild, ordering, KnrOpt(ksearch))
-    pools = pools === nothing ? getpools(idx) : pools
-    index!(idx; parallel_block, pools, verbose)
+    encoder = Knr(UInt32, refs; k=kbuild)
+    # other setups should be composed without calling this function
+    invfile = BinaryInvertedFile(length(refs)) 
+    ksearch = convert(Int32, ksearch)
+    idx = KnrIndex(encoder, db, invfile, DistanceOrdering(), KnrOpt(ksearch))
+    index!(idx; parallel_block, verbose)
 end
+
+function KnrIndex(
+        db::AbstractDatabase,
+        refs::AbstractSearchIndex,
+        odist::OrdDistType, 
+        ordering::KnrOrderingStrategy=DistanceOnTopKOrdering(1000);
+        kbuild=4,
+        ksearch=8,
+        parallel_block::Integer=get_parallel_block(length(db)),
+        verbose=false
+    ) where {OrdDistType<:DistancesForBinaryInvertedFile}
+    
+    encoder = Knr(UInt32, refs; k=kbuild)
+    # other setups should be composed without calling this function
+    invfile = BinaryInvertedFile(length(refs), odist) 
+    ksearch = convert(Int32, ksearch)
+    idx = KnrIndex(encoder, db, invfile, ordering, KnrOpt(ksearch))
+    index!(idx; parallel_block, verbose)
+end
+
+function KnrIndex(
+        db::AbstractDatabase,
+        refs::AbstractSearchIndex,
+        odist::OrdDistType,
+        ordering::KnrOrderingStrategy=DistanceOnTopKOrdering(1000);
+        kbuild=4,
+        ksearch=8,
+        parallel_block::Integer=get_parallel_block(length(db)),
+        verbose=false
+    ) where {OrdDistType<:Union{CosineDistance,NormalizedCosineDistance}}
+    
+    encoder = Knr(UInt32, refs; k=kbuild)
+    # other setups should be composed without calling this function
+    invfile = WeightedInvertedFile(length(refs)) 
+    ksearch = convert(Int32, ksearch)
+    idx = KnrIndex(encoder, db, invfile, ordering, KnrOpt(ksearch))
+    index!(idx; parallel_block, verbose)
+end
+

@@ -17,13 +17,11 @@ module InvertedFiles
     include("winvfilesearch.jl")
     include("binvfilesearch.jl")
 
-    include("refs.jl")
     include("knr.jl")
     include("knrsearch.jl")
     include("knropt.jl")
 
     function __init__()
         __init__invfile()
-        __init__knr()
     end
 end

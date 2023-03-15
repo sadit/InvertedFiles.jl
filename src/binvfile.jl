@@ -2,6 +2,7 @@
 
 export BinaryInvertedFile, set_distance_evaluate
 
+const DistancesForBinaryInvertedFile = Union{IntersectionDissimilarity,DiceDistance,JaccardDistance,CosineDistanceSet}
 """
     struct BinaryInvertedFile <: AbstractInvertedFile
 
@@ -15,7 +16,7 @@ Creates a binary weighted inverted index. An inverted index is an sparse matrix 
 - `locks`: Per row locks for multithreaded construction
 """
 struct BinaryInvertedFile{
-            DistType<:Union{IntersectionDissimilarity,DiceDistance,JaccardDistance,CosineDistanceSet},
+            DistType<:DistancesForBinaryInvertedFile,
             AdjType<:AbstractAdjacencyList,
             DbType<:Union{<:AbstractDatabase,Nothing}
         } <: AbstractInvertedFile

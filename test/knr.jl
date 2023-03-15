@@ -1,12 +1,12 @@
 # This file is a part of NeighborhoodApproximationIndex.jl
 
-using Test, SimilaritySearch, InvertedFiles, LinearAlgebra, UnicodePlots
+using Test, SimilaritySearch, KCenters, InvertedFiles, LinearAlgebra, UnicodePlots
 using SimilaritySearch: neighbors
 using JET
 
-function runtest(; dim, n, m,
+function runtest(odist, ordering; dim, n, m,
     numcenters=5ceil(Int, sqrt(n)), k=10, centersrecall=0.95, kbuild=1, ksearch=1,
-    parallel_block=256, ordering=DistanceOrdering(), minrecall=1.0, initial=:dnet, maxiters=0)
+    minrecall=1.0, initial=:dnet, maxiters=0)
     A = randn(Float32, dim, n)
     B = randn(Float32, dim, m)
     X = MatrixDatabase(A)
@@ -16,7 +16,14 @@ function runtest(; dim, n, m,
     @info "creating gold standard"
     gsearchtime = @elapsed Igold, Dgold = searchbatch(seq, Q, k)
     @info "creating the KnrIndex"
-    indextime = @elapsed index = KnrIndex(dist, X; kbuild, ksearch, parallel_block, centersrecall, initial, maxiters, ordering)
+    refs = ExhaustiveSearch(; dist, db=references(dist, X, 32; initial, maxiters))
+
+    indextime = @elapsed index = if ordering === nothing 
+        KnrIndex(X, refs; kbuild, ksearch)
+    else
+        KnrIndex(X, refs, odist, ordering; kbuild, ksearch)
+    end
+
     @test length(index) == length(X)
     @info "searching in the index"
     @show dim, n, m , numcenters, k, centersrecall, ordering
@@ -25,7 +32,7 @@ function runtest(; dim, n, m,
     @test_call searchbatch(index, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "before optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
-    @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), index-construction: $indextime"
+    @info "searchtime: gold: $(gsearchtime), index: $(tsearchtime), index-construction: $indextime"
     
     @info "**** optimizing ParetoRadius() ****"
     opttime = @elapsed optimize!(index, ParetoRadius(); verbose=false)
@@ -33,7 +40,7 @@ function runtest(; dim, n, m,
     @test_call searchbatch(index, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
-    @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), optimization-time: $opttime"
+    @info "searchtime: gold: $(gsearchtime), index: $(tsearchtime), optimization-time: $opttime"
     
     @info "**** optimizing ParetoRecall() ****"
     opttime = @elapsed optimize!(index, ParetoRecall(); verbose=false)
@@ -41,7 +48,7 @@ function runtest(; dim, n, m,
     @test_call searchbatch(index, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
-    @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), optimization-time: $opttime"
+    @info "searchtime: gold: $(gsearchtime), index: $(tsearchtime), optimization-time: $opttime"
     #@test recall >= min(0.2, minrecall)
 
     @info "**** optimizing MinRecall(0.95) ****"
@@ -50,7 +57,7 @@ function runtest(; dim, n, m,
     @test_call searchbatch(index, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
-    @info "searchtime: gold: $(gsearchtime * m), index: $(tsearchtime * m), optimization-time: $opttime"
+    @info "searchtime: gold: $(gsearchtime), index: $(tsearchtime), optimization-time: $opttime"
     @test recall >= minrecall
     
     @info "********************* generic searches *******************"
@@ -87,15 +94,13 @@ end
     dim = 4
     numcenters = 100
     k = 10
-    runtest(; dim, n, m, numcenters, k, centersrecall,
-            kbuild=5, ksearch=5, ordering=InternalDistanceOrdering(), minrecall=0.2)
-    @info "********************* Real search (top-k) *********************"
-    # useful for costly distance functions
-    
-    runtest(; dim, n, m, numcenters, k, centersrecall,
-            kbuild=5, ksearch=5, ordering=DistanceOnTopKOrdering(1000), minrecall=0.8)
+
     @info "********************* Real search *********************"
     # most usages
-    runtest(; dim, n, m, numcenters, k, centersrecall,
-            kbuild=1, ksearch=1, ordering=DistanceOrdering(), minrecall=0.8)
+    runtest(nothing, nothing; dim, n, m, numcenters, k, centersrecall,
+            kbuild=5, ksearch=5, minrecall=0.9)
+    runtest(JaccardDistance(), DistanceOnTopKOrdering(300);
+            dim, n, m, numcenters, k, centersrecall, kbuild=5, ksearch=5, minrecall=0.6)
+    runtest(CosineDistance(), DistanceOnTopKOrdering(300);
+            dim, n, m, numcenters, k, centersrecall, kbuild=5, ksearch=5, minrecall=0.2)
 end
