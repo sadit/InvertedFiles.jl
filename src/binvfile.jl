@@ -1,7 +1,6 @@
 # This file is part of InvertedFiles.jl
 
 export BinaryInvertedFile, set_distance_evaluate
-
 const DistancesForBinaryInvertedFile = Union{IntersectionDissimilarity,DiceDistance,JaccardDistance,CosineDistanceSet}
 """
     struct BinaryInvertedFile <: AbstractInvertedFile
@@ -24,7 +23,6 @@ struct BinaryInvertedFile{
     db::DbType
     adj::AdjType
     sizes::Vector{UInt32}
-    locks::Vector{SpinLock}
 end
 
 BinaryInvertedFile(invfile::BinaryInvertedFile;
@@ -32,19 +30,10 @@ BinaryInvertedFile(invfile::BinaryInvertedFile;
     db=invfile.db,
     adj=invfile.adj,
     sizes=invfile.sizes,
-    locks=invfile.locks
-) = BinaryInvertedFile(dist, db, adj, sizes, locks)
+) = BinaryInvertedFile(dist, db, adj, sizes)
 
+Base.copy(invfile::BinaryInvertedFile; kwargs...) = BinaryInvertedFile(invfile; kwargs...)
 SimilaritySearch.distance(idx::BinaryInvertedFile) = idx.dist
-
-function SimilaritySearch.saveindex(filename::AbstractString, index::BinaryInvertedFile, meta::Dict)
-    I = BinaryInvertedFile(index; adj=SimilaritySearch.StaticAdjacencyList(index.adj))
-    jldsave(filename; index=I, meta)
-end
-
-function restoreindex(index::BinaryInvertedFile, meta::Dict, f)
-    BinaryInvertedFile(index; adj=SimilaritySearch.AdjacencyList(index.adj)), meta
-end
 
 """
     set_distance_evaluate(dist::SemiMetric, intersection::Integer, size1::Integer, size2::Integer)
@@ -67,7 +56,7 @@ Creates an `BinaryInvertedFile` with the given vocabulary size and for the given
 """
 function BinaryInvertedFile(vocsize::Integer, dist=JaccardDistance(), db=nothing)
     vocsize > 0 || throw(ArgumentError("voc must not be empty"))
-    BinaryInvertedFile(dist, db, AdjacencyList(UInt32, n=vocsize), UInt32[],  [SpinLock() for i in 1:vocsize])
+    BinaryInvertedFile(dist, db, AdjacencyList(UInt32, n=vocsize), UInt32[])
 end
 
 function internal_push!(idx::BinaryInvertedFile, tokenID, objID, _, sort)

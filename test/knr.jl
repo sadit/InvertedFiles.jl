@@ -34,6 +34,18 @@ function runtest(odist, ordering; dim, n, m,
     @info "before optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime), index: $(tsearchtime), index-construction: $indextime"
     
+
+    @testset "saveindex and loadindex WeightedInvertedFile" begin
+        tmpfile = tempname()
+        @info "--- load and save!!!"
+        saveindex(tmpfile, index; meta=[1, 2, 4, 8], store_db=false)
+        let
+            G, meta = loadindex(tmpfile, database(index); staticgraph=true)
+            @test meta == [1, 2, 4, 8]
+            @test G.invfile.adj isa StaticAdjacencyList
+            @test 1.0 == macrorecall(Ires, searchbatch(G, Q, k)[1])
+        end
+    end
     @info "**** optimizing ParetoRadius() ****"
     opttime = @elapsed optimize!(index, ParetoRadius(); verbose=false)
     tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)

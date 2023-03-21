@@ -1,6 +1,6 @@
 # This file is part of InvertedFiles.jl
 
-using InvertedFiles, SimilaritySearch, LinearAlgebra
+using InvertedFiles, SimilaritySearch, SimilaritySearch.AdjacencyLists, LinearAlgebra
 using Test, JET
 using Random
 Random.seed!(0)
@@ -91,7 +91,20 @@ Random.seed!(0)
         #@show recallscore(a.res, b.res)
     end
 
-    @test 1.0 == macrorecall(allknn(ExhaustiveSearch(dist=NormalizedCosineDistance(), db=I.db), 3)[1], allknn(I, 3)[1])
+    ak = allknn(ExhaustiveSearch(dist=NormalizedCosineDistance(), db=I.db), 3)[1]
+    @test 1.0 == macrorecall(ak, allknn(I, 3)[1])
+    
+    @testset "saveindex and loadindex WeightedInvertedFile" begin
+        tmpfile = tempname()
+        @info "--- load and save!!!"
+        saveindex(tmpfile, I; meta=[1, 2, 4, 8], store_db=false)
+        let
+            G, meta = loadindex(tmpfile, database(I); staticgraph=true)
+            @test meta == [1, 2, 4, 8]
+            @test G.adj isa StaticAdjacencyList
+            @test 1.0 == macrorecall(ak, allknn(G, 3)[1])
+        end
+    end
 end
 
 @testset "BinaryInvertedFile" begin
@@ -129,5 +142,22 @@ end
         end
         @show dist, err
         @test err < 0.01  # acc. floating point errors
+
+
+    
+    @testset "saveindex and loadindex BinaryInvertedFile" begin
+        tmpfile = tempname()
+        @info "--- load and save!!!"
+        saveindex(tmpfile, IF; meta=[1, 2, 4, 8], store_db=false)
+        let
+            G, meta = loadindex(tmpfile, database(IF); staticgraph=true)
+            @test meta == [1, 2, 4, 8]
+            @test G.adj isa StaticAdjacencyList
+            Iloaded, _ = searchbatch(G, queries, k)
+            recall = macrorecall(gI, Iloaded)
+            @test recall > 0.95
+        end
+    end
+
     end
 end

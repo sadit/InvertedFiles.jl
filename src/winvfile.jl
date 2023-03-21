@@ -22,23 +22,13 @@ end
 
 SimilaritySearch.distance(idx::WeightedInvertedFile) = NormalizedCosineDistance()
 
-function SimilaritySearch.saveindex(filename::AbstractString, index::WeightedInvertedFile, meta::Dict)
-    adj = StaticAdjacencyList(index.adj)
-    index = InvFileType(index; adj)
-    jldsave(filename; index, meta)
-end
-
-function restoreindex(index::WeightedInvertedFile, meta::Dict, f; kwargs...)
-    adj = AdjacencyList(index.adj)
-    copy(index; adj), meta
-end
-
 WeightedInvertedFile(invfile::WeightedInvertedFile;
     db=invfile.db,
     adj=invfile.adj,
     sizes=invfile.sizes,
-) = WeightedInvertedFile(db, adj, sizes, locks)
+) = WeightedInvertedFile(db, adj, sizes)
 
+Base.copy(invfile::WeightedInvertedFile; kwargs...) = WeightedInvertedFile(invfile; kwargs...)
 """
     WeightedInvertedFile(vocsize::Integer)
 

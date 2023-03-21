@@ -20,6 +20,7 @@ module InvertedFiles
     include("knr.jl")
     include("knrsearch.jl")
     include("knropt.jl")
+    include("io.jl")
 
     function __init__()
         __init__invfile()

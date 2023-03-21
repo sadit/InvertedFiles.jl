@@ -64,6 +64,12 @@ struct KnrIndex{
     opt::KnrOpt
 end
 
+function KnrIndex(I::KnrIndex; encoder=I.encoder, db=I.db, invfile=I.invfile, ordering=I.ordering, opt=I.opt)
+    KnrIndex(encoder, db, invfile, ordering, opt)
+end
+
+Base.copy(I::KnrIndex; kwargs...) = KnrIndex(I; kwargs...)
+
 @inline Base.length(idx::KnrIndex) = length(idx.invfile)
 @inline SimilaritySearch.getpools(idx::KnrIndex) = nothing
 @inline SimilaritySearch.database(idx::KnrIndex) = idx.db
