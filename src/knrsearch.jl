@@ -1,5 +1,17 @@
 # This file is a part of InvertedFiles.jl
 
+struct KnrMergeOutput{QType,KnrType<:KnrIndex}
+    idx::KnrType
+    q::QType
+    res::KnnResult
+end
+
+function Intersections.onmatch!(output::KnrMergeOutput, L, P, m::Int)
+    @inbounds objID = getkey(L[1].list, P[1])
+    d = evaluate(distance(output.idx), output.q, database(output.idx, objID))
+    push_item!(output.res, IdWeight(objID, d))
+end
+
 """
     search(idx::KnrIndex, q, res::KnnResult; t=1, ksearch=idx.opt.ksearch, ordering=idx.ordering, pool=getpools(D))
 
@@ -17,14 +29,8 @@ end
 
 function search_(idx::KnrIndex, q, _, Q, res::KnnResult, t, ::DistanceOrdering)
     dist = distance(idx)
-    P_ = getcachepositions(length(Q), idx.invfile)
-
-    cost = xmergefun(Q, P_; t) do L, P, _
-        @inbounds objID = _get_key(L[1].list, P[1])
-        d = evaluate(dist, q, database(idx, objID))
-        push_item!(res, IdWeight(objID, d))
-    end
-
+    P = getcachepositions(length(Q))
+    cost = xmerge!(KnrMergeOutput(idx, q, res), Q, P; t)
     SearchResult(res, cost)
 end
 

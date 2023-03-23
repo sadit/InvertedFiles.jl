@@ -1,7 +1,7 @@
 name = "InvertedFiles"
 uuid = "b20bd276-2c70-11ec-161a-3d1e1109a1c3"
 authors = ["Eric S. Tellez <donsadit@gmail.com> and contributors"]
-version = "0.5.5"
+version = "0.6.0"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -17,7 +17,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
-Intersections = "0.3"
+Intersections = "0.4"
 JET = "0.7"
 KCenters = "0.8"
 Parameters = "0.12"
@@ -30,7 +30,6 @@ julia = "1.6, 1.7, 1.8, 1.9"
 [extras]
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 
 [targets]
-test = ["Test", "UnicodePlots", "JET"]
+test = ["Test", "JET"]

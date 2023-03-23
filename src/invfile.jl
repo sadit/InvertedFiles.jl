@@ -1,6 +1,6 @@
 # This file is part of InvertedFiles.jl
 
-using SimilaritySearch, LinearAlgebra, SparseArrays
+using SimilaritySearch, SimilaritySearch.AdjacencyLists, LinearAlgebra, SparseArrays
 export AbstractInvertedFile
 
 """
@@ -20,50 +20,61 @@ Base.length(idx::AbstractInvertedFile) = length(idx.sizes)
 Base.show(io::IO, idx::AbstractInvertedFile) = print(io, "{$(typeof(idx)) vocsize=$(length(idx.adj)), n=$(length(idx))}")
 SimilaritySearch.database(idx::AbstractInvertedFile) = idx.db
 
-"""
-    struct InvertedFilesCaches
-        Q
-        P
-    end
-    
-Caches used for solving queries with inverted files (one per thread)
 
-# Properties
-- `Q`: posting lists involved in a query
-- `P`: positions for merge algorithms
-"""
-struct InvertedFilesCaches
-    Q::Vector{PostingList}
-    P::Vector{UInt32}
+function getcachepostinglists(idx::AbstractInvertedFile)
+    getcachepostinglists(idx.adj)
 end
 
-function getcachepostinglists(pools::Vector{InvertedFilesCaches})
-    Q = pools[Threads.threadid()].Q
+function getcachepostinglists(adj::AdjacencyList{UInt32})
+    Q = CACHE_CONTAINERS_U32[Threads.threadid()]
     empty!(Q)
     Q
 end
 
-function getcachepositions(k::Integer, pools::Vector{InvertedFilesCaches})
-    P = pools[Threads.threadid()].P
+function getcachepostinglists(adj::AdjacencyList{IdWeight})
+    Q = CACHE_CONTAINERS_IW[Threads.threadid()]
+    empty!(Q)
+    Q
+end
+
+function getcachepostinglists(adj::AdjacencyList{IdIntWeight})
+    Q = CACHE_CONTAINERS_IIW[Threads.threadid()]
+    empty!(Q)
+    Q
+end
+
+function getcachepostinglists(adj::StaticAdjacencyList)
+    Q = [PostingList(neighbors(adj, 1), zero(UInt32), 0f0)]
+    empty!(Q)
+    sizehint!(Q, 32)
+    Q 
+end
+
+function getcachepositions(k::Integer)
+    P = CACHE_LIST_POSITIONS[Threads.threadid()]
     resize!(P, k)
     fill!(P, 1)
     P
 end
 
-getcachepostinglists(index::AbstractInvertedFile) = getcachepostinglists(getpools(idx))
-getcachepositions(k::Integer, idx::AbstractInvertedFile) = getcachepositions(k, getpools(idx))
 
-const GlobalInvertedFilesCachesPool = Vector{InvertedFilesCaches}(undef, 0)
+const CACHE_LIST_POSITIONS = [Vector{UInt32}(undef, 32)]
+const CACHE_CONTAINERS_U32 = [Vector{PostingList{Vector{UInt32}}}(undef, 32)]
+const CACHE_CONTAINERS_IW = [Vector{PostingList{Vector{IdWeight}}}(undef, 32)]
+const CACHE_CONTAINERS_IIW = [Vector{PostingList{Vector{IdIntWeight}}}(undef, 32)]
 
 function __init__invfile()
     n = Threads.nthreads()
 
-    while length(GlobalInvertedFilesCachesPool) < n
-        push!(GlobalInvertedFilesCachesPool, InvertedFilesCaches(Vector{PostingList}(undef, 10), Vector{UInt32}(undef, 10)))
+    while length(CACHE_LIST_POSITIONS) < n
+        push!(CACHE_LIST_POSITIONS, deepcopy(CACHE_LIST_POSITIONS[1]))
+        push!(CACHE_CONTAINERS_U32, deepcopy(CACHE_CONTAINERS_U32[1]))
+        push!(CACHE_CONTAINERS_IW, deepcopy(CACHE_CONTAINERS_IW[1]))
+        push!(CACHE_CONTAINERS_IIW, deepcopy(CACHE_CONTAINERS_IIW[1]))
     end
 end
 
-getpools(invfile::AbstractInvertedFile) = GlobalInvertedFilesCachesPool
+getpools(invfile::AbstractInvertedFile) = nothing
 
 """
     sparseiterator(db, i)

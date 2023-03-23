@@ -1,6 +1,6 @@
 # This file is a part of NeighborhoodApproximationIndex.jl
 
-using Test, SimilaritySearch, KCenters, InvertedFiles, LinearAlgebra, UnicodePlots
+using Test, SimilaritySearch, KCenters, InvertedFiles, LinearAlgebra
 using SimilaritySearch: neighbors
 using JET
 
@@ -78,8 +78,6 @@ function runtest(odist, ordering; dim, n, m,
     res = reuse!(res)
     @time search(index, Q[2], res)
     F = sort!([length(neighbors(index.invfile.adj, i)) for i in eachindex(index.invfile.adj)], rev=true)
-    println(histogram(F, nbins=20))
-    println(lineplot(F))
 
     #=
     @info "********************* SearchGraph ***************"
@@ -109,10 +107,10 @@ end
 
     @info "********************* Real search *********************"
     # most usages
-    runtest(nothing, nothing; dim, n, m, numcenters, k, centersrecall,
-            kbuild=5, ksearch=5, minrecall=0.9)
     runtest(JaccardDistance(), DistanceOnTopKOrdering(300);
             dim, n, m, numcenters, k, centersrecall, kbuild=5, ksearch=5, minrecall=0.6)
     runtest(CosineDistance(), DistanceOnTopKOrdering(300);
             dim, n, m, numcenters, k, centersrecall, kbuild=5, ksearch=5, minrecall=0.2)
+    runtest(nothing, nothing; dim, n, m, numcenters, k, centersrecall,
+            kbuild=5, ksearch=5, minrecall=0.9)
 end

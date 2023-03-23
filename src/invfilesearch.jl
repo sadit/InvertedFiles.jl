@@ -10,7 +10,7 @@ export search, select_posting_lists
 Fetches and prepares the involved posting lists to solve `q`
 """
 function select_posting_lists(accept::Function, idx::AbstractInvertedFile, q; pools=getpools(idx))
-	Q = getcachepostinglists(pools)
+	Q = getcachepostinglists(idx)
 	
 	@inbounds for (tokenID, weight) in sparseiterator(q)
     accept((; idx, q, tokenID, weight)) || continue
