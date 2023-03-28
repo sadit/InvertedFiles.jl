@@ -118,7 +118,7 @@ function SimilaritySearch.index!(idx::AbstractInvertedFile; minbatch=0, pools=no
     db = database(idx)
     n = length(db) - startID
     n == 0 && return idx
-    parallel_append!(idx, db, startID, n, minbatch, tol)
+    parallel_append!(idx, db, startID, n, minbatch, tol, true)
 end
 
 """
