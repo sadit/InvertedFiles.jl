@@ -47,7 +47,7 @@ function getcachepostinglists(adj::StaticAdjacencyList)
     Q = [PostingList(neighbors(adj, 1), zero(UInt32), 0f0)]
     empty!(Q)
     sizehint!(Q, 32)
-    Q 
+    Q
 end
 
 function getcachepositions(k::Integer)
@@ -122,7 +122,7 @@ function SimilaritySearch.index!(idx::AbstractInvertedFile; minbatch=0, pools=no
 end
 
 """
-    append_items!(idx, db; minbatch=1000, pools=nothing, tol=1e-6)
+    append_items!(idx, db; minbatch=1000, pools=nothing, tol=1e-6, sort=true)
 
 Appends all `db` elements into the index `idx`. It work in parallel using all available threads.
 
@@ -136,12 +136,13 @@ Appends all `db` elements into the index `idx`. It work in parallel using all av
 - `minbatch`: how many elements are inserted per available thread.
 - `pools`: unused argument but necessary by `searchbatch` (from `SimilaritySearch`)
 - `tol`: controls what is a zero (i.e., weights < tol will be ignored).
+- `sort`: if true keep posting lists always sorted, use `sort=false` to skip sorting but note that most methods expect sorted entries, so you must sort them in a posterior step.
 """
-function SimilaritySearch.append_items!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(db); minbatch=0, pools=nothing, tol=1e-6)
+function SimilaritySearch.append_items!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(db); minbatch=0, pools=nothing, tol=1e-6, sort=true)
     startID = length(idx)
     !isnothing(idx.db) && append_items!(idx.db, db)
 
-    parallel_append!(idx, db, startID, n, minbatch, tol)
+    parallel_append!(idx, db, startID, n, minbatch, tol, sort)
 end
 
 """
@@ -180,13 +181,13 @@ function internal_push_object!(idx::AbstractInvertedFile, objID::Integer, obj, t
 end
 
 
-function parallel_append!(idx, db, startID, n, minbatch, tol)
+function parallel_append!(idx, db::AbstractDatabase, startID::Int, n::Int, minbatch::Int, tol::Float64, sort::Bool)
     internal_parallel_prepare_append!(idx, startID + n)
     minbatch = getminbatch(minbatch, n)
 
     @batch minbatch=minbatch per=thread for i in 1:n
         objID = i + startID
-        internal_push_object!(idx, objID, db[i], tol, true, false)
+        internal_push_object!(idx, objID, db[i], tol, sort, false)
     end
 
     idx
