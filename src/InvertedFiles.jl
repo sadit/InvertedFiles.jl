@@ -8,6 +8,8 @@ using SimilaritySearch.AdjacencyLists
 using Base.Threads: SpinLock
 using Polyester
 
+export InvertedFileContext, getcontext
+
 include("sortedintset.jl")
 include("plists.jl")
 
