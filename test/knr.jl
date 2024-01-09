@@ -109,7 +109,7 @@ end
     runtest(JaccardDistance(), DistanceOnTopKOrdering(300);
             dim, n, m, numcenters, k, centersrecall, kbuild=5, ksearch=5, minrecall=0.6)
     runtest(CosineDistance(), DistanceOnTopKOrdering(300);
-            dim, n, m, numcenters, k, centersrecall, kbuild=5, ksearch=5, minrecall=0.1)
+            dim, n, m, numcenters, k, centersrecall, kbuild=5, ksearch=5, minrecall=0.2)
     runtest(nothing, nothing; dim, n, m, numcenters, k, centersrecall,
             kbuild=5, ksearch=5, minrecall=0.9)
 end

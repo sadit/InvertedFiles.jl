@@ -91,11 +91,12 @@ function SimilaritySearch.push_item!(idx::KnrIndex, ctx::InvertedFileContext, ob
 end
 
 function knr_as_similarity!(knr::KnnResult)
-    # return 
+    #=
     for i in eachindex(knr)
         p = knr[i]
-        knr[i] = IdWeight(p.id, 1f0 - i/length(knr))
+        knr[i] = IdWeight(p.id, 1/(0.5 + p.weight))
     end
+    =#
 end
 
 """
