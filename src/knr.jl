@@ -1,7 +1,7 @@
 # This file is a part of NeighborhoodApproximationIndex.jl
 
 using Dates, InvertedFiles, Intersections, KCenters, StatsBase, Parameters, LinearAlgebra
-export KnrIndex, index!, search, KnrOrderingStrategies, DistanceOrdering, InternalDistanceOrdering, DistanceOnTopKOrdering
+export KnrIndex, index!, search, KnrOrderingStrategy, DistanceOrdering, InternalDistanceOrdering, DistanceOnTopKOrdering
 
 mutable struct KnrOpt
     ksearch::Int32
