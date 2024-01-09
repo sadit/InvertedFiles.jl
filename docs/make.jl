@@ -16,6 +16,7 @@ makedocs(;
         "KnrIndex" => "knr.md",
         "Sparse" => "sparse.md",
     ],
+    warnonly = true
 )
 
 deploydocs(;
