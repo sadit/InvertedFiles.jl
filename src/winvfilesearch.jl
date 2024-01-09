@@ -16,7 +16,7 @@ function Intersections.onmatch!(output::WeightedInvFileOutput, L, P, m::Int)
 end
 
 """
-  search_invfile(accept_posting_list::Function, idx::WeightedInvertedFile, q, res::KnnResult, t, pools)
+  search_invfile(accept_posting_list::Function, idx::WeightedInvertedFile, ctx::InvertedFileContext, q, res::KnnResult, t)
 
 Find candidates for solving query `Q` using `idx`. It calls `callback` on each candidate `(objID, dist)`
 
@@ -25,8 +25,8 @@ Find candidates for solving query `Q` using `idx`. It calls `callback` on each c
 - `idx`: inverted index
 - `Q`: the set of involved posting lists, see [`select_posting_lists`](@ref)
 """
-function search_invfile(idx::WeightedInvertedFile, Q::Vector{PostType}, res::KnnResult, t, pools) where {PostType<:PostingList}
-    P = getcachepositions(length(Q))
+function search_invfile(idx::WeightedInvertedFile, ctx::InvertedFileContext, Q::Vector{PostType}, res::KnnResult, t) where {PostType<:PostingList}
+    P = getpositions(length(Q), ctx)
     cost = xmerge!(WeightedInvFileOutput(idx, res), Q, P; t)
     SearchResult(res, cost)
 end

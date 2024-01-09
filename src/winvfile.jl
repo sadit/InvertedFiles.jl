@@ -43,7 +43,7 @@ function WeightedInvertedFile(vocsize::Integer, db=nothing)
     )
 end
 
-function internal_push!(idx::WeightedInvertedFile, tokenID, objID, weight, sort)
+function internal_push!(idx::WeightedInvertedFile, ctx::InvertedFileContext, tokenID, objID, weight, sort)
     if sort
         add_edge!(idx.adj, tokenID, IdWeight(objID, weight), IdOrder)
     else

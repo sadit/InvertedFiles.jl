@@ -59,7 +59,7 @@ function BinaryInvertedFile(vocsize::Integer, dist=JaccardDistance(), db=nothing
     BinaryInvertedFile(dist, db, AdjacencyList(UInt32, n=vocsize), UInt32[])
 end
 
-function internal_push!(idx::BinaryInvertedFile, tokenID, objID, _, sort)
+function internal_push!(idx::BinaryInvertedFile, ctx::InvertedFileContext, tokenID, objID, _, sort)
     if sort
         add_edge!(idx.adj, tokenID, objID, IdOrder)
     else

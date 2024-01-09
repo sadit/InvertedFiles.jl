@@ -13,32 +13,30 @@ function Intersections.onmatch!(output::KnrMergeOutput, L, P, m::Int)
 end
 
 """
-    search(idx::KnrIndex, q, res::KnnResult; t=1, ksearch=idx.opt.ksearch, ordering=idx.ordering, pool=getpools(D))
+    search(idx::KnrIndex, ctx::InvertedFileContext, q, res::KnnResult; t=1, ksearch=idx.opt.ksearch, ordering=idx.ordering)
 
 Searches nearest neighbors of `q` inside the `index` under the distance function `dist`.
 """
-function search(idx::KnrIndex, q, res::KnnResult; t=1, pools=getpools(idx), ksearch=idx.opt.ksearch)
+function search(idx::KnrIndex, ctx::InvertedFileContext, q, res::KnnResult; t=1, ksearch=idx.opt.ksearch)
     enc = encode_object_res!(idx.encoder, q)
     idx.invfile isa WeightedInvertedFile && knr_as_similarity!(enc)
-    Q = select_posting_lists(idx.invfile, enc) do plist
+    Q = select_posting_lists(idx.invfile, ctx, enc) do plist
       true
     end
     
-    search_(idx, q, enc, Q, res, t, idx.ordering)
+    search_(idx, ctx, q, enc, Q, res, t, idx.ordering)
 end
 
-function search_(idx::KnrIndex, q, _, Q, res::KnnResult, t, ::DistanceOrdering)
+function search_(idx::KnrIndex, ctx::InvertedFileContext, q, _, Q, res::KnnResult, t, ::DistanceOrdering)
     dist = distance(idx)
-    P = getcachepositions(length(Q))
+    P = getpositions(length(Q), ctx)
     cost = xmerge!(KnrMergeOutput(idx, q, res), Q, P; t)
     SearchResult(res, cost)
 end
 
-function search_(idx::KnrIndex, q, enc, Q, res::KnnResult, t, ordering::DistanceOnTopKOrdering)
+function search_(idx::KnrIndex, ctx::InvertedFileContext, q, enc, Q, res::KnnResult, t, ordering::DistanceOnTopKOrdering)
     enc = encode_object_res!(idx.encoder, q; k=ordering.top)
-    pools = getpools(idx.invfile)
-    search_invfile(idx.invfile, Q, enc, t, pools)
-
+    search_invfile(idx.invfile, ctx, Q, enc, t)
     dist = distance(idx)
     for item in enc
         @inbounds push_item!(res, item.id, evaluate(dist, q, database(idx, item.id)))
@@ -47,7 +45,6 @@ function search_(idx::KnrIndex, q, enc, Q, res::KnnResult, t, ordering::Distance
     SearchResult(res, length(enc))
 end
 
-function search_(idx::KnrIndex, q, _, Q, res::KnnResult, t, ::InternalDistanceOrdering)
-    pools = getpools(idx.invfile)
-    search_invfile(idx.invfile, Q, res, t, pools)
+function search_(idx::KnrIndex, ctx::InvertedFileContext, q, _, Q, res::KnnResult, t, ::InternalDistanceOrdering)
+    search_invfile(idx.invfile, ctx, Q, res, t)
 end

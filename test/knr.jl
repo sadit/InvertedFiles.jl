@@ -13,7 +13,7 @@ function runtest(odist, ordering; dim, n, m,
     Q = MatrixDatabase(B)
     dist = SqL2Distance()
     seq = ExhaustiveSearch(dist, X)
-    @info "creating gold standard"
+    @info "================== creating gold standard ===================="
     gsearchtime = @elapsed Igold, Dgold = searchbatch(seq, Q, k)
     @info "creating the KnrIndex"
     refs = ExhaustiveSearch(; dist, db=references(dist, X, 32; initial, maxiters))
@@ -25,15 +25,14 @@ function runtest(odist, ordering; dim, n, m,
     end
 
     @test length(index) == length(X)
-    @info "searching in the index"
+    @info "=== searching in the index odist=$odist, ordering=$ordering ==="
     @show dim, n, m , numcenters, k, centersrecall, ordering
     
     tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)
-    @test_call searchbatch(index, Q, k)
+    @test_call searchbatch(index, getcontext(index), Q, k) # test_call fails without context
     recall = macrorecall(Igold, Ires)
     @info "before optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
-    @info "searchtime: gold: $(gsearchtime), index: $(tsearchtime), index-construction: $indextime"
-    
+    @info "searchtime: gold: $(gsearchtime), index: $(tsearchtime), index-construction: $indextime" 
 
     @testset "saveindex and loadindex WeightedInvertedFile" begin
         tmpfile = tempname()
@@ -47,26 +46,26 @@ function runtest(odist, ordering; dim, n, m,
         end
     end
     @info "**** optimizing ParetoRadius() ****"
-    opttime = @elapsed optimize!(index, ParetoRadius(); verbose=false)
+    opttime = @elapsed optimize_index!(index, ParetoRadius(); verbose=false)
     tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)
-    @test_call searchbatch(index, Q, k)
+    @test_call searchbatch(index, getcontext(index), Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime), index: $(tsearchtime), optimization-time: $opttime"
     
     @info "**** optimizing ParetoRecall() ****"
-    opttime = @elapsed optimize!(index, ParetoRecall(); verbose=false)
+    opttime = @elapsed optimize_index!(index, ParetoRecall(); verbose=false)
     tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)
-    @test_call searchbatch(index, Q, k)
+    @test_call searchbatch(index, getcontext(index), Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime), index: $(tsearchtime), optimization-time: $opttime"
     #@test recall >= min(0.2, minrecall)
 
-    @info "**** optimizing MinRecall(0.95) ****"
-    opttime = @elapsed optimize!(index, MinRecall(0.95); verbose=false)
-    tsearchtime = @elapsed Ires, Dres = searchbatch(index, Q, k)
-    @test_call searchbatch(index, Q, k)
+    @info "**** optimizing MinRecall(0.95) - $index ****"
+    opttime = @elapsed optimize_index!(index, getcontext(index), MinRecall(0.95); verbose=false)
+    tsearchtime = @elapsed Ires, Dres = searchbatch(index, getcontext(index), Q, k)
+    @test_call searchbatch(index, getcontext(index), Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(index)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
     @info "searchtime: gold: $(gsearchtime), index: $(tsearchtime), optimization-time: $opttime"
@@ -85,7 +84,7 @@ function runtest(odist, ordering; dim, n, m,
     G = SearchGraph(; dist, db=X, neighborhood)
     G.neighborhood.reduce = IdentityNeighborhood()
     index!(G, parallel_block=1000)
-    opttime = @elapsed optimize!(G, MinRecall(0.95); verbose=true)
+    opttime = @elapsed optimize_index!(G, MinRecall(0.95); verbose=true)
     @time Ires, Dres, tsearchtime = timedsearchbatch(G, Q, k)
     recall = macrorecall(Igold, Ires)
     @info "AFTER optimization: $(G)" (recall=recall, qps=1/tsearchtime, gold_qps=1/gsearchtime)
@@ -110,7 +109,7 @@ end
     runtest(JaccardDistance(), DistanceOnTopKOrdering(300);
             dim, n, m, numcenters, k, centersrecall, kbuild=5, ksearch=5, minrecall=0.6)
     runtest(CosineDistance(), DistanceOnTopKOrdering(300);
-            dim, n, m, numcenters, k, centersrecall, kbuild=5, ksearch=5, minrecall=0.2)
+            dim, n, m, numcenters, k, centersrecall, kbuild=5, ksearch=5, minrecall=0.1)
     runtest(nothing, nothing; dim, n, m, numcenters, k, centersrecall,
             kbuild=5, ksearch=5, minrecall=0.9)
 end

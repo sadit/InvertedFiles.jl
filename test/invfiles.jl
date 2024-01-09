@@ -124,9 +124,10 @@ end
         IF = BinaryInvertedFile(vocsize, dist)
         append_items!(IF, db)
         iI, iD = searchbatch(IF, queries, k)
-        @time search(IF, queries[1], SimilaritySearch.getknnresult(k))
-        @time search(IF, queries[2], SimilaritySearch.getknnresult(k))
-        @test_call search(IF, queries[2], SimilaritySearch.getknnresult(k))
+        ctx = getcontext(IF)
+        @time search(IF, queries[1], getknnresult(k, ctx))
+        @time search(IF, queries[2], getknnresult(k, ctx))
+        @test_call search(IF, queries[2], getknnresult(k, ctx))
         recall = macrorecall(gI, iI)
         @show dist, recall
         @test recall > 0.95  # sets can be tricky since we can expect many similar distances

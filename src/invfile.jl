@@ -16,65 +16,34 @@ abstract type AbstractInvertedFile <: AbstractSearchIndex end
 Number of indexed elements
 """
 Base.length(idx::AbstractInvertedFile) = length(idx.sizes)
-# SimilaritySearch.getpools(::AbstractInvertedFile, results=SimilaritySearch.GlobalKnnResult) = results
 Base.show(io::IO, idx::AbstractInvertedFile) = print(io, "{$(typeof(idx)) vocsize=$(length(idx.adj)), n=$(length(idx))}")
 SimilaritySearch.database(idx::AbstractInvertedFile) = idx.db
 
 
-function getcachepostinglists(idx::AbstractInvertedFile)
-    getcachepostinglists(idx.adj)
-end
-
-function getcachepostinglists(adj::AdjacencyList{UInt32})
-    Q = CACHE_CONTAINERS_U32[Threads.threadid()]
+function getcontainer(idx::AbstractInvertedFile, ctx::InvertedFileContext)
+    Q = getcontainer(idx.adj, ctx)
     empty!(Q)
     Q
 end
 
-function getcachepostinglists(adj::AdjacencyList{IdWeight})
-    Q = CACHE_CONTAINERS_IW[Threads.threadid()]
-    empty!(Q)
-    Q
-end
+getcontainer(adj::AdjacencyList{UInt32}, ctx) = ctx.cont_u32[Threads.threadid()]
+getcontainer(adj::AdjacencyList{IdWeight}, ctx) = ctx.cont_iw[Threads.threadid()]
+getcontainer(adj::AdjacencyList{IdIntWeight}, ctx) = ctx.cont_iiw[Threads.threadid()]
 
-function getcachepostinglists(adj::AdjacencyList{IdIntWeight})
-    Q = CACHE_CONTAINERS_IIW[Threads.threadid()]
-    empty!(Q)
-    Q
-end
-
-function getcachepostinglists(adj::StaticAdjacencyList)
+function getcontainer(adj::StaticAdjacencyList, ctx)
     Q = [PostingList(neighbors(adj, 1), zero(UInt32), 0f0)]
     empty!(Q)
     sizehint!(Q, 32)
     Q
 end
 
-function getcachepositions(k::Integer)
-    P = CACHE_LIST_POSITIONS[Threads.threadid()]
+function getpositions(k::Integer, ctx::InvertedFileContext)
+    P = ctx.positions[Threads.threadid()]
     resize!(P, k)
     fill!(P, 1)
     P
 end
 
-
-const CACHE_LIST_POSITIONS = [Vector{UInt32}(undef, 32)]
-const CACHE_CONTAINERS_U32 = [Vector{PostingList{Vector{UInt32}}}(undef, 32)]
-const CACHE_CONTAINERS_IW = [Vector{PostingList{Vector{IdWeight}}}(undef, 32)]
-const CACHE_CONTAINERS_IIW = [Vector{PostingList{Vector{IdIntWeight}}}(undef, 32)]
-
-function __init__invfile()
-    n = Threads.nthreads()
-
-    while length(CACHE_LIST_POSITIONS) < n
-        push!(CACHE_LIST_POSITIONS, deepcopy(CACHE_LIST_POSITIONS[1]))
-        push!(CACHE_CONTAINERS_U32, deepcopy(CACHE_CONTAINERS_U32[1]))
-        push!(CACHE_CONTAINERS_IW, deepcopy(CACHE_CONTAINERS_IW[1]))
-        push!(CACHE_CONTAINERS_IIW, deepcopy(CACHE_CONTAINERS_IIW[1]))
-    end
-end
-
-getpools(invfile::AbstractInvertedFile) = nothing
 
 """
     sparseiterator(db, i)
@@ -113,16 +82,16 @@ convertpair(u::Pair) = u
 convertpair(u::IdWeight) = (u.id, u.weight)
 convertpair(u::IdIntWeight) = (u.id, u.weight)
 
-function SimilaritySearch.index!(idx::AbstractInvertedFile; minbatch=0, pools=nothing, tol=1e-6)
+function SimilaritySearch.index!(idx::AbstractInvertedFile, ctx::InvertedFileContext; tol=1e-6)
     startID = length(idx)
     db = database(idx)
     n = length(db) - startID
     n == 0 && return idx
-    parallel_append!(idx, db, startID, n, minbatch, tol, true)
+    parallel_append!(idx, ctx, db, startID, n, tol, true)
 end
 
 """
-    append_items!(idx, db; minbatch=1000, pools=nothing, tol=1e-6, sort=true)
+    append_items!(idx, ctx, db; tol=1e-6, sort=true)
 
 Appends all `db` elements into the index `idx`. It work in parallel using all available threads.
 
@@ -133,44 +102,45 @@ Appends all `db` elements into the index `idx`. It work in parallel using all av
 - `n`: The number of items to insert (defaults to all)
 
 # Keyword arguments:
-- `minbatch`: how many elements are inserted per available thread.
-- `pools`: unused argument but necessary by `searchbatch` (from `SimilaritySearch`)
 - `tol`: controls what is a zero (i.e., weights < tol will be ignored).
 - `sort`: if true keep posting lists always sorted, use `sort=false` to skip sorting but note that most methods expect sorted entries, so you must sort them in a posterior step.
 """
-function SimilaritySearch.append_items!(idx::AbstractInvertedFile, db::AbstractDatabase, n=length(db); minbatch=0, pools=nothing, tol=1e-6, sort=true)
+function SimilaritySearch.append_items!(idx::AbstractInvertedFile, ctx::InvertedFileContext, db::AbstractDatabase, n=length(db); tol=1e-6, sort=true)
     startID = length(idx)
     !isnothing(idx.db) && append_items!(idx.db, db)
 
-    parallel_append!(idx, db, startID, n, minbatch, tol, sort)
+    parallel_append!(idx, ctx, db, startID, n, tol, sort)
+    ctx.logger !== nothing && LOG(ctx.logger, append_items!, idx, startID, length(idx), length(idx))
+    idx
 end
 
 """
-    push_item!(idx::AbstractInvertedFile, obj; pools=nothing, tol=1e-6)
+    push_item!(idx::AbstractInvertedFile, ctx::InvertedFileContext, obj; tol=1e-6)
 
 Inserts a single element into the index. This operation is not thread-safe.
 
 # Arguments
 - `idx`: The inverted index
+- `ctx`: the index's context
 - `obj`: The object to be indexed
 
 # Keyword arguments
-- `pools`: unused argument
 - `tol`: controls what is a zero (i.e., `weight < tol` will be ignored)
 """
-function SimilaritySearch.push_item!(idx::AbstractInvertedFile, obj, objID=length(idx) + 1; pools=nothing, tol=1e-6)
-    internal_push_object!(idx, objID, obj, tol, false, true)
+function SimilaritySearch.push_item!(idx::AbstractInvertedFile, ctx::InvertedFileContext, obj, objID=length(idx) + 1; tol=1e-6)
+    internal_push_object!(idx, ctx, objID, obj, tol, false, true)
     !isnothing(idx.db) && push_item!(idx.db, obj)
+    ctx.logger !== nothing && LOG(ctx.logger, push_item!, idx, objID)
     idx
 end
 
-function internal_push_object!(idx::AbstractInvertedFile, objID::Integer, obj, tol::Float64, sort, is_push)
+function internal_push_object!(idx::AbstractInvertedFile, ctx::InvertedFileContext, objID::Integer, obj, tol::Float64, sort, is_push)
     nz = 0
     @inbounds for (tokenID, weight) in sparseiterator(obj)
         weight < tol && continue
         tokenID == 0 && continue  # object 0 is a centinel
         nz += 1
-        internal_push!(idx, tokenID, objID, weight, sort)
+        internal_push!(idx, ctx, tokenID, objID, weight, sort)
     end
 
     if is_push
@@ -181,13 +151,13 @@ function internal_push_object!(idx::AbstractInvertedFile, objID::Integer, obj, t
 end
 
 
-function parallel_append!(idx, db::AbstractDatabase, startID::Int, n::Int, minbatch::Int, tol::Float64, sort::Bool)
+function parallel_append!(idx, ctx::InvertedFileContext, db::AbstractDatabase, startID::Int, n::Int, tol::Float64, sort::Bool)
     internal_parallel_prepare_append!(idx, startID + n)
-    minbatch = getminbatch(minbatch, n)
+    minbatch = getminbatch(ctx.minbatch, n)
 
     @batch minbatch=minbatch per=thread for i in 1:n
         objID = i + startID
-        internal_push_object!(idx, objID, db[i], tol, sort, false)
+        internal_push_object!(idx, ctx, objID, db[i], tol, sort, false)
     end
 
     idx

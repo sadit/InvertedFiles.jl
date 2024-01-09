@@ -2,8 +2,8 @@
 
 using SearchModels, Random, StatsBase
 import SearchModels: combine, mutate
-import SimilaritySearch: optimize!, MinRecall, ParetoRecall, ParetoRadius, ErrorFunction, setconfig!, runconfig, optimization_space
-export optimize!, KnrOptSpace
+import SimilaritySearch: optimize_index!, MinRecall, ParetoRecall, ParetoRadius, ErrorFunction, setconfig!, runconfig, optimization_space
+export optimize_index!, KnrOptSpace
 
 @with_kw struct KnrOptSpace <: AbstractSolutionSpace
     ksearch = 1:3:21
@@ -24,6 +24,6 @@ function setconfig!(c::KnrOpt, index::KnrIndex, perf)
     index.opt.ksearch = c.ksearch
 end
 
-function runconfig(c::KnrOpt, index::KnrIndex, q, res::KnnResult, pools)
-    search(index, q, res; pools, ksearch=c.ksearch)
+function runconfig(c::KnrOpt, index::KnrIndex, ctx::InvertedFileContext, q, res::KnnResult)
+    search(index, ctx, q, res; ksearch=c.ksearch)
 end
