@@ -57,10 +57,6 @@ include("binvfile.jl")
 include("invfilesearch.jl")
 include("winvfilesearch.jl")
 include("binvfilesearch.jl")
-
-include("knr.jl")
-include("knrsearch.jl")
-include("knropt.jl")
 include("io.jl")
 
 DEFAULT_CACHE_INVFILES = Ref(InvertedFileContext())

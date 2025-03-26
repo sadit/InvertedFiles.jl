@@ -24,13 +24,3 @@ function restoreindex(file, parent::String, index::BinaryInvertedFile, meta, opt
     BinaryInvertedFile(index; adj)
 end
 
-function serializeindex(file, parent::String, index::KnrIndex, meta, options::Dict)
-    I = copy(index; invfile=BinaryInvertedFile(1))
-    file[joinpath(parent, "index")] = I
-    saveindex(file, index.invfile; parent=joinpath(parent, "invfile"))
-end
-
-function restoreindex(file, parent::String, index::KnrIndex, meta, options::Dict; staticgraph=false)
-    invfile, meta_ = loadindex(file; parent=joinpath(parent, "invfile"), staticgraph)
-    copy(index; invfile)
-end

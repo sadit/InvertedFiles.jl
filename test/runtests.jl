@@ -5,4 +5,3 @@ Aqua.test_all(InvertedFiles, ambiguities=false)
 Aqua.test_ambiguities([InvertedFiles])
 
 include("invfiles.jl")
-include("knr.jl")
