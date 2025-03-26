@@ -13,7 +13,6 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Inv. Files" => "invfile.md",
-        "KnrIndex" => "knr.md",
         "Sparse" => "sparse.md",
     ],
     warnonly = true
