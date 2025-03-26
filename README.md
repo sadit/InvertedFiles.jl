@@ -22,6 +22,7 @@ Pkg.add("InvertedFiles")
 ```
 
 ## About the `KnrIndex`
+**The KnrIndex is only on v0.7 an previous versions of this package; it was removed for simplicity and in favor of generic inverted files**
 
 This package defines the `KnrIndex` similarity search index that takes advantage of multithreading systems.
 It is based on inverted files [`InvertedFiles`](https://github.com/sadit/InvertedFiles.jl) and [`SimilaritySearch`](https://github.com/sadit/SimilaritySearch.jl).
