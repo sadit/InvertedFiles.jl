@@ -1,8 +1,8 @@
 # This file is part of InvertedFiles.jl
 
-struct BinInvFileOutput{InvFileType<:BinaryInvertedFile}
+struct BinInvFileOutput{InvFileType<:BinaryInvertedFile,Knn<:AbstractKnn}
     idx::InvFileType
-    res::KnnResult
+    res::Knn
     n::Int
 end
 
@@ -13,7 +13,7 @@ function Intersections.onmatch!(output::BinInvFileOutput, L, P, isize::Int)
 end
 
 """
-  search_invfile(accept_posting_list::Function, idx::BinaryInvertedFile, ctx::InvertedFileContext, Q, res::KnnResult, t)
+  search_invfile(accept_posting_list::Function, idx::BinaryInvertedFile, ctx::InvertedFileContext, Q, res::AbstractKnn, t)
 
 Find candidates for solving query `Q` using `idx`. It calls `callback` on each candidate `(objID, dist)`
 
@@ -24,9 +24,9 @@ Find candidates for solving query `Q` using `idx`. It calls `callback` on each c
 - `Q`: the set of involved posting lists, see [`select_posting_lists`](@ref)
 - `t`: threshold (t=1 union, t > 1 solves the t-threshold problem)
 """
-function search_invfile(idx::BinaryInvertedFile, ctx::InvertedFileContext, Q::Vector{PostType}, res::KnnResult, t) where {PostType<:PostingList}
+function search_invfile(idx::BinaryInvertedFile, ctx::InvertedFileContext, Q::Vector{PostType}, res::AbstractKnn, t) where {PostType<:PostingList}
     n = length(Q)
     P = getpositions(n, ctx)
-    cost = xmerge!(BinInvFileOutput(idx, res, n), Q, P; t)
-    SearchResult(res, cost)
+    res.costevals = xmerge!(BinInvFileOutput(idx, res, n), Q, P; t)
+    res
 end

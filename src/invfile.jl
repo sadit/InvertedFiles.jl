@@ -110,7 +110,7 @@ function SimilaritySearch.append_items!(idx::AbstractInvertedFile, ctx::Inverted
     !isnothing(idx.db) && append_items!(idx.db, db)
 
     parallel_append!(idx, ctx, db, startID, n, tol, sort)
-    ctx.logger !== nothing && LOG(ctx.logger, append_items!, idx, startID, length(idx), length(idx))
+    LOG(ctx.logger, :append_items!, idx, ctx, startID, length(idx))
     idx
 end
 
@@ -130,7 +130,7 @@ Inserts a single element into the index. This operation is not thread-safe.
 function SimilaritySearch.push_item!(idx::AbstractInvertedFile, ctx::InvertedFileContext, obj, objID=length(idx) + 1; tol=1e-6)
     internal_push_object!(idx, ctx, objID, obj, tol, false, true)
     !isnothing(idx.db) && push_item!(idx.db, obj)
-    ctx.logger !== nothing && LOG(ctx.logger, push_item!, idx, objID)
+    LOG(ctx.logger, :push_item!, idx, ctx, objID, objID)
     idx
 end
 

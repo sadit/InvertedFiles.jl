@@ -17,11 +17,11 @@ Random.seed!(0)
     k = 30
     for i in 1:10
         qid = rand(1:length(A))
-        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), ectx, A[qid], KnnResult(k))
-        b = search(I, ctx, B[qid], KnnResult(k))
-        @test recallscore(a.res, b.res) == 1.0
+        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), ectx, A[qid], knnqueue(KnnSorted, k))
+        b = search(I, ctx, B[qid], knnqueue(KnnSorted, k))
+        @test recallscore(a, b) == 1.0
         if i == 1
-          @test_call search(I, ctx, B[qid], KnnResult(k))
+          @test_call search(I, ctx, B[qid], knnqueue(KnnSorted, k))
         end
     end
 
@@ -31,22 +31,22 @@ Random.seed!(0)
     k = 30
     for i in 1:10
         qid = rand(1:length(A))
-        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), ectx, A[qid], KnnResult(k))
-        b = search(I, ctx, B[qid], KnnResult(k))
-        @test recallscore(a.res, b.res) == 1.0
+        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), ectx, A[qid], knnqueue(KnnSorted, k))
+        b = search(I, ctx, B[qid], knnqueue(KnnSorted, k))
+        @test recallscore(a, b) == 1.0
         if i == 1
-          @test_call search(I, ctx, B[qid], KnnResult(k))
+          @test_call search(I, ctx, B[qid], knnqueue(KnnSorted, k))
         end
     end
 
     k = 30
     for i in 1:10
         qid = rand(1:length(A))
-        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), ectx, A[qid], KnnResult(k))
-        b = search(I, ctx, B[qid], KnnResult(k))
-        @test recallscore(a.res, b.res) == 1.0
+        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), ectx, A[qid], knnqueue(KnnSorted, k))
+        b = search(I, ctx, B[qid], knnqueue(KnnSorted, k))
+        @test recallscore(a, b) == 1.0
         if i == 1
-          @test_call search(I, ctx, B[qid], KnnResult(k))
+          @test_call search(I, ctx, B[qid], knnqueue(KnnSorted, k))
         end
     end
 
@@ -70,12 +70,12 @@ Random.seed!(0)
     for i in 1:10
         #@info i
         qid = rand(1:length(A))
-        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), ectx, A[qid], KnnResult(k))
-        b = search(I, ctx, B[qid], KnnResult(k))
-        @test recallscore(a.res, b.res) == 1.0
-        #@show recallscore(a.res, b.res)
+        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), ectx, A[qid], knnqueue(KnnSorted, k))
+        b = search(I, ctx, B[qid], knnqueue(KnnSorted, k))
+        @test recallscore(a, b) == 1.0
+        #@show recallscore(a, b)
         if i == 1
-          @test_call search(I, ctx, B[qid], KnnResult(k))
+          @test_call search(I, ctx, B[qid], knnqueue(KnnSorted, k))
         end
     end
 
@@ -87,14 +87,14 @@ Random.seed!(0)
     for i in 1:10
         # @info i
         qid = rand(1:length(A))
-        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), ectx, A[qid], KnnResult(k))
-        b = search(I, ctx, B[qid], KnnResult(k))
-        @test recallscore(a.res, b.res) == 1.0
-        #@show recallscore(a.res, b.res)
+        a = search(ExhaustiveSearch(NormalizedCosineDistance(), A), ectx, A[qid], knnqueue(KnnSorted, k))
+        b = search(I, ctx, B[qid], knnqueue(KnnSorted, k))
+        @test recallscore(a, b) == 1.0
+        #@show recallscore(a, b)
     end
 
-    ak = allknn(ExhaustiveSearch(dist=NormalizedCosineDistance(), db=I.db), ectx, 3)[1]
-    @test 1.0 == macrorecall(ak, allknn(I, ctx, 3)[1])
+    ak = allknn(ExhaustiveSearch(dist=NormalizedCosineDistance(), db=I.db), ectx, 3)
+    @test 1.0 == macrorecall(ak, allknn(I, ctx, 3))
     
     @testset "saveindex and loadindex WeightedInvertedFile" begin
         tmpfile = tempname()
@@ -104,7 +104,7 @@ Random.seed!(0)
             G, meta = loadindex(tmpfile, database(I); staticgraph=true)
             @test meta == [1, 2, 4, 8]
             @test G.adj isa StaticAdjacencyList
-            @test 1.0 == macrorecall(ak, allknn(G, ctx, 3)[1])
+            @test 1.0 == macrorecall(ak, allknn(G, ctx, 3))
         end
     end
 end
@@ -123,25 +123,24 @@ end
     #for dist in [JaccardDistance(), DiceDistance(), CosineDistanceSet(), IntersectionDissimilarity()]
     for dist in [JaccardDistance()]
         S = ExhaustiveSearch(; dist, db)
-        gI, gD = searchbatch(S, ectx, queries, k)
+        gold = searchbatch(S, ectx, queries, k)
 
         IF = BinaryInvertedFile(vocsize, dist)
         append_items!(IF, ctx, db)
-        iI, iD = searchbatch(IF, ctx, queries, k)
+        knns = searchbatch(IF, ctx, queries, k)
         ctx = getcontext(IF)
-        @time search(IF, ctx, queries[1], getknnresult(k, ctx))
-        @time search(IF, ctx, queries[2], getknnresult(k, ctx))
-        @test_call search(IF, ctx, queries[2], getknnresult(k, ctx))
-        recall = macrorecall(gI, iI)
+        @time search(IF, ctx, queries[1], knnqueue(KnnSorted, k))
+        @time search(IF, ctx, queries[2], knnqueue(KnnSorted, k))
+        @test_call search(IF, ctx, queries[2], knnqueue(KnnSorted, k))
+        recall = macrorecall(gold, knns)
         @show dist, recall
         @test recall > 0.95  # sets can be tricky since we can expect many similar distances
         err = 0.0
         for i in 1:m
-            d = evaluate(L2Distance(), gD[:, i], iD[:, i])
+            d = evaluate(L2Distance(), collect(DistView(gold[:, i])), collect(DistView(knns[:, i])))
             err += d
             if d > 0.1
-                @info dist, i, gD[:, i], iD[:, i]
-                @info dist, i, gI[:, i], iI[:, i]
+                @info dist, i, gold[:, i], knns[:, i]
                 @info dist, i, queries[i]
             end
         end
@@ -158,8 +157,8 @@ end
             G, meta = loadindex(tmpfile, database(IF); staticgraph=true)
             @test meta == [1, 2, 4, 8]
             @test G.adj isa StaticAdjacencyList
-            Iloaded, _ = searchbatch(G, ctx, queries, k)
-            recall = macrorecall(gI, Iloaded)
+            knns = searchbatch(G, ctx, queries, k)
+            recall = macrorecall(gold, knns)
             @test recall > 0.95
         end
     end

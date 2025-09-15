@@ -3,7 +3,8 @@
 module InvertedFiles
 using Intersections
 import SimilaritySearch:
-    search, index!, getcontext, getknnresult, getminbatch, AbstractContext, KnnResult
+    search, index!, getcontext, getminbatch, AbstractContext
+using SimilaritySearch
 using SimilaritySearch.AdjacencyLists
 using Base.Threads: SpinLock
 using Polyester
@@ -14,18 +15,18 @@ include("sortedintset.jl")
 include("plists.jl")
 
 struct InvertedFileContext{A,B,C,D} <: AbstractContext
-    logger
+    logger::AbstractLog
     minbatch::Int
     parallel_block::Int
     positions::A
     cont_u32::B
     cont_iw::C
     cont_iiw::D
-    knn::Vector{KnnResult}
+    knns::Matrix{IdWeight}
 end
 
-function InvertedFileContext(
-        ctx::InvertedFileContext;
+#=function InvertedFileContext(
+        ctx::InvertedFileContext{KnnType};
         logger = ctx.loggger,                 
         minbatch = ctx.minbatch,
         parallel_block = ctx.parallel_block,
@@ -33,23 +34,26 @@ function InvertedFileContext(
         cont_u32=ctx.cont_u32,
         cont_iw=ctx.cont_iw,
         cont_iiw=ctx.cont_iiw,
-        knn=ctx.knn
-    )
-    InvertedFileContext(ctx, logger, minbatch, parallel_block, positions, cont_u32, cont_iw, cont_iiw, knn) 
-end
+        knns=ctx.knns
+    ) where KnnType
+    InvertedFileContext{KnnType}(ctx, logger, minbatch, parallel_block, positions, cont_u32, cont_iw, cont_iiw, knns) 
+end=#
 
 function InvertedFileContext(; 
-        logger = InformativeLog(),                 
+        logger = InformativeLog(1.0),                 
         minbatch = 0,
         parallel_block = 256,
-        positions = [Vector{UInt32}(undef, 32) for _ in 1:Threads.nthreads()],
-        cont_u32 = [Vector{PostingList{Vector{UInt32}}}(undef, 32) for _ in 1:Threads.nthreads()],
-        cont_iw = [Vector{PostingList{Vector{IdWeight}}}(undef, 32) for _ in 1:Threads.nthreads()],
-        cont_iiw = [Vector{PostingList{Vector{IdIntWeight}}}(undef, 32) for _ in 1:Threads.nthreads()],
-        knn = [KnnResult(32) for _ in 1:Threads.nthreads()]
+        positions = [Vector{UInt32}(undef, 32) for _ in 1:Threads.maxthreadid()],
+        cont_u32 = [Vector{PostingList{Vector{UInt32}}}(undef, 32) for _ in 1:Threads.maxthreadid()],
+        cont_iw = [Vector{PostingList{Vector{IdWeight}}}(undef, 32) for _ in 1:Threads.maxthreadid()],
+        cont_iiw = [Vector{PostingList{Vector{IdIntWeight}}}(undef, 32) for _ in 1:Threads.maxthreadid()],
+        knns = zeros(IdWeight, 64, Threads.maxthreadid())
     )
-    InvertedFileContext(logger, minbatch, parallel_block, positions, cont_u32, cont_iw, cont_iiw, knn)
+
+    InvertedFileContext(logger, minbatch, parallel_block, positions, cont_u32, cont_iw, cont_iiw, knns)
 end
+
+SimilaritySearch.knnqueue(::InvertedFileContext, arg) = knnqueue(KnnSorted, arg)
 
 include("invfile.jl")
 include("winvfile.jl")

@@ -1,8 +1,8 @@
 # This file is part of InvertedFiles.jl
 
-struct WeightedInvFileOutput{InvFileType<:WeightedInvertedFile}
+struct WeightedInvFileOutput{InvFileType<:WeightedInvertedFile,Knn<:AbstractKnn}
     idx::InvFileType
-    res::KnnResult
+    res::Knn
 end
 
 function Intersections.onmatch!(output::WeightedInvFileOutput, L, P, m::Int)
@@ -16,7 +16,7 @@ function Intersections.onmatch!(output::WeightedInvFileOutput, L, P, m::Int)
 end
 
 """
-  search_invfile(accept_posting_list::Function, idx::WeightedInvertedFile, ctx::InvertedFileContext, q, res::KnnResult, t)
+  search_invfile(accept_posting_list::Function, idx::WeightedInvertedFile, ctx::InvertedFileContext, q, res::AbstractKnn, t)
 
 Find candidates for solving query `Q` using `idx`. It calls `callback` on each candidate `(objID, dist)`
 
@@ -25,8 +25,8 @@ Find candidates for solving query `Q` using `idx`. It calls `callback` on each c
 - `idx`: inverted index
 - `Q`: the set of involved posting lists, see [`select_posting_lists`](@ref)
 """
-function search_invfile(idx::WeightedInvertedFile, ctx::InvertedFileContext, Q::Vector{PostType}, res::KnnResult, t) where {PostType<:PostingList}
+function search_invfile(idx::WeightedInvertedFile, ctx::InvertedFileContext, Q::Vector{PostType}, res::AbstractKnn, t) where {PostType<:PostingList}
     P = getpositions(length(Q), ctx)
-    cost = xmerge!(WeightedInvFileOutput(idx, res), Q, P; t)
-    SearchResult(res, cost)
+    res.costevals = xmerge!(WeightedInvFileOutput(idx, res), Q, P; t)
+    res
 end

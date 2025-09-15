@@ -26,20 +26,20 @@ function select_posting_lists(accept::Function, idx::AbstractInvertedFile, ctx::
 end
 
 """
-	search(idx::AbstractInvertedFile, ctx::InvertedFileContext, q, res::KnnResult; tol=1e-6, t=1)
+	search(idx::AbstractInvertedFile, ctx::InvertedFileContext, q, res::AbstractKnn; tol=1e-6, t=1)
 
 Searches `q` in `idx` using the cosine dissimilarity, it computes the full operation on `idx`. `res` specify the query
 """
-function search(idx::AbstractInvertedFile, ctx::InvertedFileContext, q, res::KnnResult; tol=1e-6, t=1)
+function search(idx::AbstractInvertedFile, ctx::InvertedFileContext, q, res::AbstractKnn; tol=1e-6, t=1)
     tol = convert(Float32, tol)
     search_invfile(idx, ctx, q, res, t) do plist
         plist.weight >= tol
     end
 end
 
-function search_invfile(accept_posting_list::Function, idx::AbstractInvertedFile, ctx::InvertedFileContext, q, res::KnnResult, t)
+function search_invfile(accept_posting_list::Function, idx::AbstractInvertedFile, ctx::InvertedFileContext, q, res::AbstractKnn, t)
     Q = select_posting_lists(accept_posting_list, idx, ctx, q)
     n = length(Q)
-    n == 0 && return SearchResult(res, 0)
+    n == 0 && return res
     search_invfile(idx, ctx, Q, res, t)
 end
