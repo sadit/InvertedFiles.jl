@@ -17,8 +17,7 @@ Number of indexed elements
 """
 Base.length(idx::AbstractInvertedFile) = length(idx.sizes)
 Base.show(io::IO, idx::AbstractInvertedFile) = print(io, "{$(typeof(idx)) vocsize=$(length(idx.adj)), n=$(length(idx))}")
-SimilaritySearch.database(idx::AbstractInvertedFile) = idx.db
-
+SimilaritySearch.database(idx::AbstractInvertedFile) = nothing
 
 function getcontainer(idx::AbstractInvertedFile, ctx::InvertedFileContext)
     Q = getcontainer(idx.adj, ctx)
@@ -82,22 +81,22 @@ convertpair(u::Pair) = u
 convertpair(u::IdWeight) = (u.id, u.weight)
 convertpair(u::IdIntWeight) = (u.id, u.weight)
 
-function SimilaritySearch.index!(idx::AbstractInvertedFile, ctx::InvertedFileContext; tol=1e-6)
+#=function SimilaritySearch.index!(idx::AbstractInvertedFile, ctx::InvertedFileContext; tol=1e-6)
     startID = length(idx)
     db = database(idx)
     n = length(db) - startID
     n == 0 && return idx
     parallel_append!(idx, ctx, db, startID, n, tol, true)
-end
+end=#
 
 """
-    append_items!(idx, ctx, db; tol=1e-6, sort=true)
+    append_items!(idx, ctx, items; tol=1e-6, sort=true)
 
-Appends all `db` elements into the index `idx`. It work in parallel using all available threads.
+Appends all `items` elements into the index `idx`. It work in parallel using all available threads.
 
 # Arguments:
 - `idx`: The inverted index
-- `db`: The database of sparse objects, it can be only indices if each object is a list of integers or a set of integers (useful for `BinaryInvertedFile`),
+- `items`: The database of sparse objects, it can be only indices if each object is a list of integers or a set of integers (useful for `BinaryInvertedFile`),
     sparse matrices, dense matrices, among other combinations.
 - `n`: The number of items to insert (defaults to all)
 
@@ -105,11 +104,9 @@ Appends all `db` elements into the index `idx`. It work in parallel using all av
 - `tol`: controls what is a zero (i.e., weights < tol will be ignored).
 - `sort`: if true keep posting lists always sorted, use `sort=false` to skip sorting but note that most methods expect sorted entries, so you must sort them in a posterior step.
 """
-function SimilaritySearch.append_items!(idx::AbstractInvertedFile, ctx::InvertedFileContext, db::AbstractDatabase, n=length(db); tol=1e-6, sort=true)
+function SimilaritySearch.append_items!(idx::AbstractInvertedFile, ctx::InvertedFileContext, items::AbstractDatabase, n=length(items); tol::Float64=1e-6, sort::Bool=true)
     startID = length(idx)
-    !isnothing(idx.db) && append_items!(idx.db, db)
-
-    parallel_append!(idx, ctx, db, startID, n, tol, sort)
+    parallel_append!(idx, ctx, items, startID, n, tol, sort)
     LOG(ctx.logger, :append_items!, idx, ctx, startID, length(idx))
     idx
 end
@@ -149,7 +146,6 @@ function internal_push_object!(idx::AbstractInvertedFile, ctx::InvertedFileConte
         idx.sizes[objID] = nz
     end
 end
-
 
 function parallel_append!(idx, ctx::InvertedFileContext, db::AbstractDatabase, startID::Int, n::Int, tol::Float64, sort::Bool)
     internal_parallel_prepare_append!(idx, startID + n)

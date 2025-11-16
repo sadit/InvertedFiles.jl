@@ -16,23 +16,21 @@ Creates a binary weighted inverted index. An inverted index is an sparse matrix 
 """
 struct BinaryInvertedFile{
             DistType<:DistancesForBinaryInvertedFile,
-            AdjType<:AbstractAdjacencyList,
-            DbType<:Union{<:AbstractDatabase,Nothing}
+            AdjType<:AbstractAdjacencyList
         } <: AbstractInvertedFile
     dist::DistType
-    db::DbType
     adj::AdjType
     sizes::Vector{UInt32}
 end
 
-BinaryInvertedFile(invfile::BinaryInvertedFile;
-    dist=invfile.dist,
-    db=invfile.db,
-    adj=invfile.adj,
-    sizes=invfile.sizes,
-) = BinaryInvertedFile(dist, db, adj, sizes)
+function Base.show(io::IO, invfile::BinaryInvertedFile; prefix="", indent="\t")
+    println(io, prefix, "BinaryInvertedFile:")
+    prefix = indent * prefix
+    println(io, prefix, "dist: ", invfile.dist)
+    println(io, prefix, "length: ", length(invfile))
+    println(io, prefix, "adj: ", typeof(invfile.adj))
+end
 
-Base.copy(invfile::BinaryInvertedFile; kwargs...) = BinaryInvertedFile(invfile; kwargs...)
 SimilaritySearch.distance(idx::BinaryInvertedFile) = idx.dist
 
 """
@@ -54,9 +52,9 @@ Creates an `BinaryInvertedFile` with the given vocabulary size and for the given
 - `vocsize`: the vocabulary size of the index
 - `dist`: the distance function to be used in searches
 """
-function BinaryInvertedFile(vocsize::Integer, dist=JaccardDistance(), db=nothing)
+function BinaryInvertedFile(vocsize::Integer, dist=JaccardDistance())
     vocsize > 0 || throw(ArgumentError("voc must not be empty"))
-    BinaryInvertedFile(dist, db, AdjacencyList(UInt32, n=vocsize), UInt32[])
+    BinaryInvertedFile(dist, AdjacencyList(UInt32, n=vocsize), UInt32[])
 end
 
 function internal_push!(idx::BinaryInvertedFile, ctx::InvertedFileContext, tokenID, objID, _, sort)

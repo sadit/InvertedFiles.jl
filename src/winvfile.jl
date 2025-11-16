@@ -14,30 +14,29 @@ This index is optimized to efficiently solve `k` nearest neighbors (cosine dista
 - `weights`: non-zero weights (in rows)
 - `sizes`: number of non-zero values in each element (non-zero values in columns)
 """
-struct WeightedInvertedFile{DbType<:Union{<:AbstractDatabase,Nothing}, AdjType<:AbstractAdjacencyList} <: AbstractInvertedFile
-    db::DbType    
+struct WeightedInvertedFile{AdjType<:AbstractAdjacencyList} <: AbstractInvertedFile
     adj::AdjType
     sizes::Vector{UInt32}  ## number of non zero elements per vector
 end
 
+
+function Base.show(io::IO, invfile::WeightedInvertedFile; prefix="", indent="\t")
+    println(io, prefix, "WeightedInvertedFile:")
+    prefix = indent * prefix
+    println(io, prefix, "length: ", length(invfile))
+    println(io, prefix, "adj: ", typeof(invfile.adj))
+end
+
 SimilaritySearch.distance(idx::WeightedInvertedFile) = NormalizedCosineDistance()
 
-WeightedInvertedFile(invfile::WeightedInvertedFile;
-    db=invfile.db,
-    adj=invfile.adj,
-    sizes=invfile.sizes,
-) = WeightedInvertedFile(db, adj, sizes)
-
-Base.copy(invfile::WeightedInvertedFile; kwargs...) = WeightedInvertedFile(invfile; kwargs...)
 """
     WeightedInvertedFile(vocsize::Integer)
 
 Convenient function to create an empty `WeightedInvertedFile` with the given vocabulary size.
 """
-function WeightedInvertedFile(vocsize::Integer, db=nothing)
+function WeightedInvertedFile(vocsize::Integer)
     vocsize > 0 || throw(ArgumentError("voc must not be empty"))
     WeightedInvertedFile(
-        db,
         AdjacencyList(IdWeight; n=vocsize),
         Vector{UInt32}(undef, 0)
     )

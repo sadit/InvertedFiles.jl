@@ -12,7 +12,7 @@ Random.seed!(0)
     # testing with Vector container (map=nothing)
     ectx = GenericContext()
     ctx = InvertedFileContext()
-    I = index!(WeightedInvertedFile(300, B), ctx)
+    I = append_items!(WeightedInvertedFile(300), ctx, B)
 
     k = 30
     for i in 1:10
@@ -26,7 +26,7 @@ Random.seed!(0)
     end
 
     # testing with Dict container (map != nothing)
-    I = index!(WeightedInvertedFile(300, B), ctx)
+    I = append_items!(WeightedInvertedFile(300), ctx, B)
 
     k = 30
     for i in 1:10
@@ -79,9 +79,9 @@ Random.seed!(0)
         end
     end
 
-    I = WeightedInvertedFile(300, B)
+    I = WeightedInvertedFile(300)
     @test length(I) == 0
-    index!(I, ctx)
+    append_items!(I, ctx, B)
     @test length(I) == length(B)
     k = 1  # the aggresive cut of the attributes need a small k
     for i in 1:10
@@ -93,12 +93,13 @@ Random.seed!(0)
         #@show recallscore(a, b)
     end
 
-    ak = allknn(ExhaustiveSearch(dist=NormalizedCosineDistance(), db=I.db), ectx, 3)
-    @test 1.0 == macrorecall(ak, allknn(I, ctx, 3))
+    ak = allknn(ExhaustiveSearch(dist=NormalizedCosineDistance(), db=B), ectx, 3)
+    @test 1.0 == macrorecall(ak, searchbatch(I, ctx, B, 3))
     
-    @testset "saveindex and loadindex WeightedInvertedFile" begin
+    #=@testset "saveindex and loadindex WeightedInvertedFile" begin
         tmpfile = tempname()
         @info "--- load and save!!!"
+
         saveindex(tmpfile, I; meta=[1, 2, 4, 8], store_db=false)
         let
             G, meta = loadindex(tmpfile, database(I); staticgraph=true)
@@ -106,7 +107,7 @@ Random.seed!(0)
             @test G.adj isa StaticAdjacencyList
             @test 1.0 == macrorecall(ak, allknn(G, ctx, 3))
         end
-    end
+    end=#
 end
 
 @testset "BinaryInvertedFile" begin
@@ -147,9 +148,7 @@ end
         @show dist, err
         @test err < 0.01  # acc. floating point errors
 
-
-    
-    @testset "saveindex and loadindex BinaryInvertedFile" begin
+    #=@testset "saveindex and loadindex BinaryInvertedFile" begin
         tmpfile = tempname()
         @info "--- load and save!!!"
         saveindex(tmpfile, IF; meta=[1, 2, 4, 8], store_db=false)
@@ -161,7 +160,7 @@ end
             recall = macrorecall(gold, knns)
             @test recall > 0.95
         end
-    end
+    end=#
 
     end
 end
