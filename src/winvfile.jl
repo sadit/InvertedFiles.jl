@@ -14,7 +14,7 @@ This index is optimized to efficiently solve `k` nearest neighbors (cosine dista
 - `weights`: non-zero weights (in rows)
 - `sizes`: number of non-zero values in each element (non-zero values in columns)
 """
-struct WeightedInvertedFile{AdjType<:AbstractAdjacencyList} <: AbstractInvertedFile
+struct WeightedInvertedFile{AdjType<:AbstractAdjList} <: AbstractInvertedFile
     adj::AdjType
     sizes::Vector{UInt32}  ## number of non zero elements per vector
 end
@@ -27,7 +27,7 @@ function Base.show(io::IO, invfile::WeightedInvertedFile; prefix="", indent="\t"
     println(io, prefix, "adj: ", typeof(invfile.adj))
 end
 
-SimilaritySearch.distance(idx::WeightedInvertedFile) = NormalizedCosineDistance()
+SimilaritySearch.distance(idx::WeightedInvertedFile) = Dist.NormCosine()
 
 """
     WeightedInvertedFile(vocsize::Integer)
@@ -37,16 +37,11 @@ Convenient function to create an empty `WeightedInvertedFile` with the given voc
 function WeightedInvertedFile(vocsize::Integer)
     vocsize > 0 || throw(ArgumentError("voc must not be empty"))
     WeightedInvertedFile(
-        AdjacencyList(IdWeight; n=vocsize),
+        AdjList(IdWeight, vocsize),
         Vector{UInt32}(undef, 0)
     )
 end
 
-function internal_push!(idx::WeightedInvertedFile, ctx::InvertedFileContext, tokenID, objID, weight, sort)
-    if sort
-        add_edge!(idx.adj, tokenID, IdWeight(objID, weight), IdOrder)
-    else
-        add_edge!(idx.adj, tokenID, IdWeight(objID, weight), nothing)
-    end
-
+function internal_push!(idx::WeightedInvertedFile, ctx::InvertedFileContext, tokenID, objID, weight)
+    add!(idx.adj, tokenID, (IdWeight(objID, weight),))
 end

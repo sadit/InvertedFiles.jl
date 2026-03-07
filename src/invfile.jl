@@ -1,6 +1,6 @@
 # This file is part of InvertedFiles.jl
 
-using SimilaritySearch, SimilaritySearch.AdjacencyLists, LinearAlgebra, SparseArrays
+using SimilaritySearch, LinearAlgebra, SparseArrays
 export AbstractInvertedFile
 
 """
@@ -25,12 +25,12 @@ function getcontainer(idx::AbstractInvertedFile, ctx::InvertedFileContext)
     Q
 end
 
-getcontainer(adj::AdjacencyList{UInt32}, ctx) = ctx.cont_u32[Threads.threadid()]
-getcontainer(adj::AdjacencyList{IdWeight}, ctx) = ctx.cont_iw[Threads.threadid()]
-getcontainer(adj::AdjacencyList{IdIntWeight}, ctx) = ctx.cont_iiw[Threads.threadid()]
+getcontainer(adj::AdjList{UInt32}, ctx) = ctx.cont_u32[Threads.threadid()]
+getcontainer(adj::AdjList{IdWeight}, ctx) = ctx.cont_iw[Threads.threadid()]
+getcontainer(adj::AdjList{IdIntWeight}, ctx) = ctx.cont_iiw[Threads.threadid()]
 
-function getcontainer(adj::StaticAdjacencyList, ctx)
-    Q = [PostingList(neighbors(adj, 1), zero(UInt32), 0f0)]
+function getcontainer(adj::StaticAdjList, ctx)
+    Q = [PostingList(neighbors(adj, 1), zero(UInt32), 0.0f0)]
     empty!(Q)
     sizehint!(Q, 32)
     Q
@@ -90,7 +90,7 @@ convertpair(u::IdIntWeight) = (u.id, u.weight)
 end=#
 
 """
-    append_items!(idx, ctx, items; tol=1e-6, sort=true)
+    append_items!(idx, ctx, items; tol=1e-6)
 
 Appends all `items` elements into the index `idx`. It work in parallel using all available threads.
 
@@ -102,11 +102,10 @@ Appends all `items` elements into the index `idx`. It work in parallel using all
 
 # Keyword arguments:
 - `tol`: controls what is a zero (i.e., weights < tol will be ignored).
-- `sort`: if true keep posting lists always sorted, use `sort=false` to skip sorting but note that most methods expect sorted entries, so you must sort them in a posterior step.
 """
-function SimilaritySearch.append_items!(idx::AbstractInvertedFile, ctx::InvertedFileContext, items::AbstractDatabase, n=length(items); tol::Float64=1e-6, sort::Bool=true)
+function SimilaritySearch.append_items!(idx::AbstractInvertedFile, ctx::InvertedFileContext, items::AbstractDatabase, n=length(items); tol::Float64=1e-6)
     startID = length(idx)
-    parallel_append!(idx, ctx, items, startID, n, tol, sort)
+    parallel_append!(idx, ctx, items, startID, n, tol)
     LOG(ctx.logger, :append_items!, idx, ctx, startID, length(idx))
     idx
 end
@@ -125,36 +124,56 @@ Inserts a single element into the index. This operation is not thread-safe.
 - `tol`: controls what is a zero (i.e., `weight < tol` will be ignored)
 """
 function SimilaritySearch.push_item!(idx::AbstractInvertedFile, ctx::InvertedFileContext, obj, objID=length(idx) + 1; tol=1e-6)
-    internal_push_object!(idx, ctx, objID, obj, tol, false, true)
+    nz = internal_push_object!(idx, ctx, objID, obj, tol)
+    for (tokenID, weight) in sparseiterator(obj)
+        N = neighbors(idx.adj, tokenID)
+        N === nothing && continue
+        sort!(N)
+    end
+    push!(idx.sizes, nz)
     !isnothing(idx.db) && push_item!(idx.db, obj)
     LOG(ctx.logger, :push_item!, idx, ctx, objID, objID)
     idx
 end
 
-function internal_push_object!(idx::AbstractInvertedFile, ctx::InvertedFileContext, objID::Integer, obj, tol::Float64, sort, is_push)
+function internal_push_object!(idx::AbstractInvertedFile, ctx::InvertedFileContext, objID::Integer, obj, tol::Float64)
     nz = 0
     @inbounds for (tokenID, weight) in sparseiterator(obj)
         weight < tol && continue
         tokenID == 0 && continue  # object 0 is a centinel
         nz += 1
-        internal_push!(idx, ctx, tokenID, objID, weight, sort)
+        internal_push!(idx, ctx, tokenID, objID, weight)
     end
 
-    if is_push
-        push!(idx.sizes, nz)
-    else
-        idx.sizes[objID] = nz
-    end
+    nz
 end
 
-function parallel_append!(idx, ctx::InvertedFileContext, db::AbstractDatabase, startID::Int, n::Int, tol::Float64, sort::Bool)
+function parallel_append!(idx, ctx::InvertedFileContext, db::AbstractDatabase, startID::Int, n::Int, tol::Float64)
     internal_parallel_prepare_append!(idx, startID + n)
-    minbatch = getminbatch(ctx.minbatch, n)
+    minbatch = getminbatch(n)
 
-    @batch minbatch=minbatch per=thread for i in 1:n
+    @batch minbatch = minbatch per = thread for i in 1:n
         objID = i + startID
-        internal_push_object!(idx, ctx, objID, db[i], tol, sort, false)
+        nz = internal_push_object!(idx, ctx, objID, db[i], tol)
+        idx.sizes[objID] = nz
     end
+
+    if idx isa BinaryInvertedFile
+        @batch minbatch = minbatch per = thread for i in 1:length(idx.adj)
+            N = neighbors(idx.adj, i)
+            N === nothing && continue
+            sort!(N)
+        end
+    elseif idx isa WeightedInvertedFile
+        @batch minbatch = minbatch per = thread for i in 1:length(idx.adj)
+            N = neighbors(idx.adj, i)
+            N === nothing && continue
+            sort!(N, by=p -> p.id)
+        end
+    else
+        throw(ArgumentError("Unknown invertedfile type $(typeof(idx))"))
+    end
+
 
     idx
 end

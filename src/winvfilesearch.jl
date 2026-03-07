@@ -12,7 +12,7 @@ function Intersections.onmatch!(output::WeightedInvFileOutput, L, P, m::Int)
         w -= L[i].weight * L[i].list[P[i]].weight
     end
 
-    push_item!(output.res, IdWeight(objID, w))
+    push_item!(output.res, objID, w)
 end
 
 """
@@ -27,6 +27,8 @@ Find candidates for solving query `Q` using `idx`. It calls `callback` on each c
 """
 function search_invfile(idx::WeightedInvertedFile, ctx::InvertedFileContext, Q::Vector{PostType}, res::AbstractKnn, t) where {PostType<:PostingList}
     P = getpositions(length(Q), ctx)
-    res.costevals = xmerge!(WeightedInvFileOutput(idx, res), Q, P; t)
+    cost = xmerge!(WeightedInvFileOutput(idx, res), Q, P; t)
+    SimilaritySearch.add_block_evaluations!(res, length(Q))
+    SimilaritySearch.add_distance_evaluations!(res, cost)
     res
 end

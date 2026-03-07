@@ -3,14 +3,15 @@
 module InvertedFiles
 using Intersections
 import SimilaritySearch:
-    search, index!, getcontext, getminbatch, AbstractContext
+    search, index!, getcontext
 using SimilaritySearch
-using SimilaritySearch.AdjacencyLists
+using SimilaritySearch: Dist, AbstractContext, getminbatch
+
 using Base.Threads: SpinLock
 using Polyester
 
 export InvertedFileContext, getcontext
-
+include("idweight.jl")
 include("sortedintset.jl")
 include("plists.jl")
 
@@ -40,7 +41,7 @@ end
 end=#
 
 function InvertedFileContext(; 
-        logger = InformativeLog(1.0),                 
+        logger = InformativeLog(dt=1.0),                 
         minbatch = 0,
         parallel_block = 256,
         positions = [Vector{UInt32}(undef, 32) for _ in 1:Threads.maxthreadid()],

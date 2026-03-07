@@ -1,7 +1,7 @@
 # This file is part of InvertedFiles.jl
 
 export BinaryInvertedFile, set_distance_evaluate
-const DistancesForBinaryInvertedFile = Union{IntersectionDissimilarity,DiceDistance,JaccardDistance,CosineDistanceSet}
+const DistancesForBinaryInvertedFile = Union{Dist.Sets.Intersection,Dist.Sets.Dice,Dist.Sets.Jaccard,Dist.Sets.CosineSet}
 """
     struct BinaryInvertedFile <: AbstractInvertedFile
 
@@ -9,14 +9,14 @@ Creates a binary weighted inverted index. An inverted index is an sparse matrix 
 
 # Properties:
 
-- `dist`: Distance function to be applied, valid values are: `IntersectionDissimilarity()`, `DiceDistance()`, `JaccardDistance()`, and `CosineDistanceSet()
+- `dist`: Distance function to be applied, valid values are: `Dist.Sets.Intersection()`, `Dist.Sets.Dice()`, `Dist.Sets.Jaccard()`, and `Dist.Sets.CosineSet()
 - `lists`: posting lists (non-zero values of the rows in the matrix)
 - `sizes`: number of non-zero values per object (number of non-zero values per column)
 - `locks`: Per row locks for multithreaded construction
 """
 struct BinaryInvertedFile{
             DistType<:DistancesForBinaryInvertedFile,
-            AdjType<:AbstractAdjacencyList
+            AdjType<:AbstractAdjList
         } <: AbstractInvertedFile
     dist::DistType
     adj::AdjType
@@ -38,13 +38,13 @@ SimilaritySearch.distance(idx::BinaryInvertedFile) = idx.dist
 
 Computes the distance function `dist` on a [`BinaryInvertedFile`](@ref).
 """
-set_distance_evaluate(::IntersectionDissimilarity, intersection::Int32, size1::Int32, size2::Int32)::Float32 = 1.0 - intersection / max(size1, size2)
-set_distance_evaluate(::DiceDistance, intersection::Int32, size1::Int32, size2::Int32)::Float32 = 1.0 - (2intersection) / (size1 + size2)
-set_distance_evaluate(::JaccardDistance, intersection::Int32, size1::Int32, size2::Int32)::Float32 = 1.0 - (intersection) / (size1 + size2 - intersection)
-set_distance_evaluate(::CosineDistanceSet, intersection::Int32, size1::Int32, size2::Int32)::Float32 = 1.0 - (intersection) / (sqrt(size1) * sqrt(size2))
+set_distance_evaluate(::Dist.Sets.Intersection, intersection::Int32, size1::Int32, size2::Int32)::Float32 = 1.0 - intersection / max(size1, size2)
+set_distance_evaluate(::Dist.Sets.Dice, intersection::Int32, size1::Int32, size2::Int32)::Float32 = 1.0 - (2intersection) / (size1 + size2)
+set_distance_evaluate(::Dist.Sets.Jaccard, intersection::Int32, size1::Int32, size2::Int32)::Float32 = 1.0 - (intersection) / (size1 + size2 - intersection)
+set_distance_evaluate(::Dist.Sets.CosineSet, intersection::Int32, size1::Int32, size2::Int32)::Float32 = 1.0 - (intersection) / (sqrt(size1) * sqrt(size2))
 set_distance_evaluate(t, intersection::Integer, size1::Integer, size2::Integer)::Float32 = set_distance_evaluate(t, convert(Int32, intersection), convert(Int32, size1), convert(Int32, size2))
 """
-    BinaryInvertedFile(vocsize::Integer, dist=JaccardDistance())
+    BinaryInvertedFile(vocsize::Integer, dist=Dist.Sets.Jaccard())
 
 Creates an `BinaryInvertedFile` with the given vocabulary size and for the given distance function `dist`:
 
@@ -52,15 +52,11 @@ Creates an `BinaryInvertedFile` with the given vocabulary size and for the given
 - `vocsize`: the vocabulary size of the index
 - `dist`: the distance function to be used in searches
 """
-function BinaryInvertedFile(vocsize::Integer, dist=JaccardDistance())
+function BinaryInvertedFile(vocsize::Integer, dist=Dist.Sets.Jaccard())
     vocsize > 0 || throw(ArgumentError("voc must not be empty"))
-    BinaryInvertedFile(dist, AdjacencyList(UInt32, n=vocsize), UInt32[])
+    BinaryInvertedFile(dist, AdjList(UInt32, vocsize), UInt32[])
 end
 
-function internal_push!(idx::BinaryInvertedFile, ctx::InvertedFileContext, tokenID, objID, _, sort)
-    if sort
-        add_edge!(idx.adj, tokenID, objID, IdOrder)
-    else
-        add_edge!(idx.adj, tokenID, objID, nothing)
-    end
+function internal_push!(idx::BinaryInvertedFile, ctx::InvertedFileContext, tokenID, objID, _)
+    add!(idx.adj, tokenID, (objID,))
 end
