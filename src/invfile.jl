@@ -51,15 +51,19 @@ Creates an iterator for indices and values of the `i`-th db's element (e.g., col
 Several specializations are provided.
 """
 function sparseiterator(db::MatrixDatabase{<:SparseMatrixCSC}, i)
-    r = nzrange(db.matrix, i)
-    v = nonzeros(db.matrix)
-    zip(r, view(v, r))
+    sparseiterator(db.matrix, i)
 end
 
 function sparseiterator(X::SparseMatrixCSC, i)
     r = nzrange(X, i)
-    v = nonzeros(X)
-    zip(r, view(v, r))
+    rows = rowvals(X)
+    vals = nonzeros(X)
+    zip(view(rows, r), view(vals, r))
+end
+
+function sparseiterator(vec::SubArray{<:AbstractFloat, 1, <:SparseMatrixCSC})  # to efficiently support views
+    _, i = vec.indices
+    sparseiterator(vec.parent, i)
 end
 
 function sparseiterator(vec::SubArray{<:AbstractFloat, 1, <:SparseMatrixCSC})  # to efficiently support views
