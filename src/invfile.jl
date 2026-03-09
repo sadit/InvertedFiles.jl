@@ -56,6 +56,17 @@ function sparseiterator(db::MatrixDatabase{<:SparseMatrixCSC}, i)
     zip(r, view(v, r))
 end
 
+function sparseiterator(X::SparseMatrixCSC, i)
+    r = nzrange(X, i)
+    v = nonzeros(X)
+    zip(r, view(v, r))
+end
+
+function sparseiterator(vec::SubArray{<:AbstractFloat, 1, <:SparseMatrixCSC})  # to efficiently support views
+    _, i = vec.indices
+    sparseiterator(vec.parent, i)
+end
+
 sparseiterator(db::MatrixDatabase{<:Matrix}, i) = enumerate(view(db.matrix, i))
 sparseiterator(db::AbstractDatabase, i) = sparseiterator(db[i])
 
@@ -125,7 +136,7 @@ Inserts a single element into the index. This operation is not thread-safe.
 """
 function SimilaritySearch.push_item!(idx::AbstractInvertedFile, ctx::InvertedFileContext, obj, objID=length(idx) + 1; tol=1e-6)
     nz = internal_push_object!(idx, ctx, objID, obj, tol)
-    for (tokenID, weight) in sparseiterator(obj)
+    for (tokenID, _) in sparseiterator(obj)
         N = neighbors(idx.adj, tokenID)
         N === nothing && continue
         sort!(N)
@@ -154,8 +165,7 @@ function parallel_append!(idx, ctx::InvertedFileContext, db::AbstractDatabase, s
 
     @batch minbatch = minbatch per = thread for i in 1:n
         objID = i + startID
-        nz = internal_push_object!(idx, ctx, objID, db[i], tol)
-        idx.sizes[objID] = nz
+        idx.sizes[objID] = internal_push_object!(idx, ctx, objID, db[i], tol)
     end
 
     if idx isa BinaryInvertedFile
