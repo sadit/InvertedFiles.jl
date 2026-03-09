@@ -2,7 +2,7 @@
 
 using Intersections
 import SimilaritySearch: search
-export search, select_posting_lists
+export search, select_posting_lists, search_invfile
 
 """
 	select_posting_lists(idx::AbstractInvertedFile, ctx::InvertedFileContext, q, tol)
@@ -16,6 +16,7 @@ function select_posting_lists(accept::Function, idx::AbstractInvertedFile, ctx::
     accept((; idx, q, tokenID, weight)) || continue
 		tokenID == 0 && continue
 		N = neighbors(idx.adj, tokenID)
+		N === nothing && continue
 		if length(N) > 0
 			L = PostingList(N, convert(UInt32, tokenID), convert(Float32, weight))
 			push!(Q, L)

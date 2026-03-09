@@ -184,7 +184,6 @@ function parallel_append!(idx, ctx::InvertedFileContext, db::AbstractDatabase, s
         throw(ArgumentError("Unknown invertedfile type $(typeof(idx))"))
     end
 
-
     idx
 end
 
