@@ -66,11 +66,6 @@ function sparseiterator(vec::SubArray{<:AbstractFloat, 1, <:SparseMatrixCSC})  #
     sparseiterator(vec.parent, i)
 end
 
-function sparseiterator(vec::SubArray{<:AbstractFloat, 1, <:SparseMatrixCSC})  # to efficiently support views
-    _, i = vec.indices
-    sparseiterator(vec.parent, i)
-end
-
 sparseiterator(db::MatrixDatabase{<:Matrix}, i) = enumerate(view(db.matrix, i))
 sparseiterator(db::AbstractDatabase, i) = sparseiterator(db[i])
 
