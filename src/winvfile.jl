@@ -19,7 +19,6 @@ struct WeightedInvertedFile{AdjType<:AbstractAdjList} <: AbstractInvertedFile
     sizes::Vector{UInt32}  ## number of non zero elements per vector
 end
 
-
 function Base.show(io::IO, invfile::WeightedInvertedFile; prefix="", indent="\t")
     println(io, prefix, "WeightedInvertedFile:")
     prefix = indent * prefix

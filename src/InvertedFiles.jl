@@ -3,7 +3,7 @@
 module InvertedFiles
 using Intersections
 import SimilaritySearch:
-    search, index!, getcontext
+    search, index!, getcontext, append_items!, push_item!
 using SimilaritySearch
 using SimilaritySearch: Dist, AbstractContext, getminbatch
 
